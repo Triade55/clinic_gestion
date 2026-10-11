@@ -1,0 +1,372 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Caisse & Encaissement Consultation{% endblock %}
+
+{% block content %}
+<div class="main-content">
+
+    <!-- En-tête Caisse -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 1.75rem; color: var(--neutral-900); display: flex; align-items: center; gap: 0.65rem;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: var(--primary-100); color: var(--primary-700);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                </span>
+                Accueil & Encaissement Consultation
+            </h1>
+            <p style="color: var(--neutral-600); font-size: 0.925rem; margin-top: 0.25rem;">
+                Enregistrez le patient, encaissez la consultation et imprimez la facture avec son numéro de patient unique.
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary" id="btn-view-invoices-list">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Historique des Factures
+            </a>
+        </div>
+    </div>
+
+    <!-- Conteneur 2 Colonnes -->
+    <div style="display: grid; grid-template-columns: 2fr 1.1fr; gap: 1.75rem;" class="encaissement-layout">
+
+        <!-- Colonne Principale : Formulaire de Saisie -->
+        <div class="auth-card" style="max-width: none; padding: 2rem; box-shadow: var(--shadow-md);">
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-error" style="margin-bottom: 1.5rem;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div>
+                    {% for err in form.non_field_errors %}
+                    <div>{{ err }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="post" id="billing-form" novalidate>
+                {% csrf_token %}
+
+                <!-- SECTION 1 : STATUT DU PATIENT -->
+                <div style="margin-bottom: 1.75rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--neutral-200);">
+                    <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--primary-700); letter-spacing: 0.05em; margin-bottom: 0.75rem;">
+                        Étape 1 : Identification du Patient
+                    </div>
+
+                    <!-- Choix Nouveau vs Existant -->
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem;">
+                        <label style="flex: 1; display: flex; align-items: center; gap: 0.65rem; padding: 0.85rem 1rem; border: 2px solid var(--primary-600); background: var(--primary-50); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.95rem; color: var(--primary-900);" id="label-mode-new">
+                            <input type="radio" name="patient_mode" value="NEW" id="radio-mode-new" {% if form.patient_mode.value != 'EXISTING' %}checked{% endif %}>
+                            <span>+ Nouveau Patient</span>
+                        </label>
+
+                        <label style="flex: 1; display: flex; align-items: center; gap: 0.65rem; padding: 0.85rem 1rem; border: 2px solid var(--neutral-300); background: #ffffff; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.95rem; color: var(--neutral-700);" id="label-mode-existing">
+                            <input type="radio" name="patient_mode" value="EXISTING" id="radio-mode-existing" {% if form.patient_mode.value == 'EXISTING' %}checked{% endif %}>
+                            <span>Patient Existant (N° Patient)</span>
+                        </label>
+                    </div>
+
+                    <!-- Champs Nouveau Patient -->
+                    <div id="section-new-patient">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Nom de famille <span style="color: #dc2626;">*</span></label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                <ul class="form-errors">{% for err in form.last_name.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group">
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label">Prénom(s) <span style="color: #dc2626;">*</span></label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                <ul class="form-errors">{% for err in form.first_name.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="{{ form.phone_number.id_for_label }}" class="form-label">Téléphone de contact</label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                            <ul class="form-errors">{% for err in form.phone_number.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Champ Patient Existant -->
+                    <div id="section-existing-patient" style="display: none;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="{{ form.existing_patient_number.id_for_label }}" class="form-label">Numéro Unique de Patient <span style="color: #dc2626;">*</span></label>
+                            {{ form.existing_patient_number }}
+                            <div class="form-help">Saisissez son numéro de dossier délivré sur sa facture (ex: <code>PAT-2026-0001</code>).</div>
+                            {% if form.existing_patient_number.errors %}
+                            <ul class="form-errors">{% for err in form.existing_patient_number.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 2 : PRESTATION & ENCAISSEMENT -->
+                <div style="margin-bottom: 1.75rem;">
+                    <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--primary-700); letter-spacing: 0.05em; margin-bottom: 0.75rem;">
+                        Étape 2 : Spécialité & Règlement
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.specialty.id_for_label }}" class="form-label">Spécialité / Type de consultation <span style="color: #dc2626;">*</span></label>
+                        {{ form.specialty }}
+                        {% if form.specialty.errors %}
+                        <ul class="form-errors">{% for err in form.specialty.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.amount_received.id_for_label }}" class="form-label">Montant remis par le patient (FCFA) <span style="color: #dc2626;">*</span></label>
+                        {{ form.amount_received }}
+                        {% if form.amount_received.errors %}
+                        <ul class="form-errors">{% for err in form.amount_received.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                        {% endif %}
+
+                        <!-- Boutons d'appoint rapide -->
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;" id="quick-cash-buttons">
+                            <span style="font-size: 0.775rem; color: var(--neutral-500); align-self: center; margin-right: 0.25rem;">Raccourcis :</span>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem;" id="btn-exact-amount">
+                                Compte exact
+                            </button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem;" data-add="5000">
+                                5 000 FCFA
+                            </button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem;" data-add="10000">
+                                10 000 FCFA
+                            </button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.8rem;" data-add="20000">
+                                20 000 FCFA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOX DYNAMIQUE DE CALCUL EN DIRECT (MONNAIE RENDUE) -->
+                <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 2px dashed var(--neutral-300); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-bottom: 2rem;" id="calculation-summary-box">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 1rem; align-items: center;">
+                        <div>
+                            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Tarif Consultation</div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: var(--neutral-900); margin-top: 0.2rem;" id="display-fee">
+                                0 FCFA
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Montant Reçu</div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: var(--neutral-700); margin-top: 0.2rem;" id="display-received">
+                                0 FCFA
+                            </div>
+                        </div>
+
+                        <div style="background: #ffffff; padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 2px solid var(--success-border); text-align: right;" id="status-card-container">
+                            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--success-text); font-weight: 800; letter-spacing: 0.05em;" id="display-status-label">
+                                Monnaie à Rendre
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 900; color: var(--success-text); margin-top: 0.15rem;" id="display-change">
+                                0 FCFA
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bouton de Validation Principal -->
+                <button type="submit" class="btn btn-primary btn-block" style="padding: 1rem; font-size: 1.1rem;" id="btn-submit-encaissement">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Encaisser & Générer la Facture Imprimable
+                </button>
+            </form>
+        </div>
+
+        <!-- Colonne Latérale : Informations & Derniers Encaissements -->
+        <div>
+            <!-- Carte Rôle & Instructions Secrétariat -->
+            <div class="role-actions-container" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--neutral-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary-600);">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Guide de Caisse
+                </h3>
+                <ul style="font-size: 0.85rem; color: var(--neutral-600); padding-left: 1.2rem; line-height: 1.6;">
+                    <li><strong>Numéro Unique de Patient :</strong> Toujours imprimer le reçu et remettre l'exemplaire au patient. Son numéro (ex: <code>PAT-...</code>) servira pour toutes ses futures visites.</li>
+                    <li><strong>Calcul automatique :</strong> Saisissez le montant remis par le patient, le montant rendu s'affiche automatiquement en vert.</li>
+                </ul>
+            </div>
+
+            <!-- Derniers Encaissements Réalisés -->
+            <div class="role-actions-container" style="padding: 1.25rem;">
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--neutral-900); margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span>Derniers Encaissements</span>
+                    <span style="font-size: 0.75rem; background: var(--neutral-100); padding: 0.15rem 0.5rem; border-radius: 99px;">Aujourd'hui</span>
+                </h3>
+
+                {% if recent_invoices %}
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    {% for inv in recent_invoices %}
+                    <a href="{% url 'billing:invoice_detail' inv.pk %}" style="display: block; padding: 0.75rem; background: var(--neutral-50); border: 1px solid var(--neutral-200); border-radius: var(--radius-md); text-decoration: none; transition: all 150ms;" onmouseover="this.style.borderColor='var(--primary-600)'" onmouseout="this.style.borderColor='var(--neutral-200)'">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                            <span style="font-weight: 700; font-size: 0.875rem; color: var(--neutral-900);">{{ inv.patient.full_name }}</span>
+                            <span style="font-weight: 800; font-size: 0.875rem; color: var(--primary-700);">{{ inv.consultation_fee|floatformat:0 }} FCFA</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--neutral-500);">
+                            <span>N° {{ inv.patient.patient_number }}</span>
+                            <span>{{ inv.created_at|date:"H:i" }}</span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p style="font-size: 0.85rem; color: var(--neutral-500); font-style: italic;">
+                    Aucun encaissement réalisé pour le moment.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- SCRIPT DE CALCUL DYNAMIQUE EN DIRECT & BASCULE DES MODES -->
+<script>
+    // Dictionnaire de prix injecté par Django
+    const SPECIALTY_PRICES = {{ specialty_prices_json|safe }};
+
+    const radioNew = document.getElementById('radio-mode-new');
+    const radioExisting = document.getElementById('radio-mode-existing');
+    const labelNew = document.getElementById('label-mode-new');
+    const labelExisting = document.getElementById('label-mode-existing');
+    const secNew = document.getElementById('section-new-patient');
+    const secExisting = document.getElementById('section-existing-patient');
+
+    const selectSpecialty = document.getElementById('id_specialty_select');
+    const inputReceived = document.getElementById('id_amount_received');
+    const displayFee = document.getElementById('display-fee');
+    const displayReceived = document.getElementById('display-received');
+    const displayChange = document.getElementById('display-change');
+    const btnExact = document.getElementById('btn-exact-amount');
+
+    // Bascule Nouveau / Existant
+    function togglePatientMode() {
+        if (radioExisting && radioExisting.checked) {
+            secNew.style.display = 'none';
+            secExisting.style.display = 'block';
+            labelExisting.style.borderColor = 'var(--primary-600)';
+            labelExisting.style.background = 'var(--primary-50)';
+            labelExisting.style.color = 'var(--primary-900)';
+            labelNew.style.borderColor = 'var(--neutral-300)';
+            labelNew.style.background = '#ffffff';
+            labelNew.style.color = 'var(--neutral-700)';
+        } else {
+            secNew.style.display = 'block';
+            secExisting.style.display = 'none';
+            labelNew.style.borderColor = 'var(--primary-600)';
+            labelNew.style.background = 'var(--primary-50)';
+            labelNew.style.color = 'var(--primary-900)';
+            labelExisting.style.borderColor = 'var(--neutral-300)';
+            labelExisting.style.background = '#ffffff';
+            labelExisting.style.color = 'var(--neutral-700)';
+        }
+    }
+
+    if (radioNew && radioExisting) {
+        radioNew.addEventListener('change', togglePatientMode);
+        radioExisting.addEventListener('change', togglePatientMode);
+        togglePatientMode();
+    }
+
+    // Calcul en temps réel du tarif et de la monnaie
+    function updateCalculations() {
+        const specId = selectSpecialty ? selectSpecialty.value : null;
+        const fee = (specId && SPECIALTY_PRICES[specId]) ? SPECIALTY_PRICES[specId] : 0;
+        const received = inputReceived && inputReceived.value ? parseFloat(inputReceived.value) : 0;
+
+        const statusContainer = document.getElementById('status-card-container');
+        const statusLabel = document.getElementById('display-status-label');
+
+        displayFee.textContent = fee.toLocaleString('fr-FR') + ' FCFA';
+        displayReceived.textContent = received.toLocaleString('fr-FR') + ' FCFA';
+
+        if (received >= fee) {
+            // Paiement suffisant ou supérieur
+            const change = received - fee;
+            displayChange.textContent = change.toLocaleString('fr-FR') + ' FCFA';
+            statusLabel.textContent = 'Monnaie à Rendre';
+            statusLabel.style.color = 'var(--success-text)';
+            displayChange.style.color = 'var(--success-text)';
+            statusContainer.style.borderColor = 'var(--success-border)';
+            statusContainer.style.background = '#ffffff';
+        } else if (received > 0) {
+            // Paiement partiel / Acompte
+            const remaining = fee - received;
+            displayChange.textContent = remaining.toLocaleString('fr-FR') + ' FCFA';
+            statusLabel.textContent = 'Paiement Partiel (Reste à Payer)';
+            statusLabel.style.color = '#b45309';
+            displayChange.style.color = '#b45309';
+            statusContainer.style.borderColor = '#fde68a';
+            statusContainer.style.background = '#fffbeb';
+        } else {
+            // 0 perçu
+            displayChange.textContent = fee.toLocaleString('fr-FR') + ' FCFA';
+            statusLabel.textContent = 'Non Réglé (Reste à Payer)';
+            statusLabel.style.color = '#991b1b';
+            displayChange.style.color = '#991b1b';
+            statusContainer.style.borderColor = 'var(--error-border)';
+            statusContainer.style.background = 'var(--error-bg)';
+        }
+    }
+
+    if (selectSpecialty) {
+        selectSpecialty.addEventListener('change', updateCalculations);
+    }
+    if (inputReceived) {
+        inputReceived.addEventListener('input', updateCalculations);
+    }
+
+    // Bouton "Compte exact"
+    if (btnExact) {
+        btnExact.addEventListener('click', function() {
+            const specId = selectSpecialty ? selectSpecialty.value : null;
+            if (specId && SPECIALTY_PRICES[specId]) {
+                inputReceived.value = SPECIALTY_PRICES[specId];
+                updateCalculations();
+            }
+        });
+    }
+
+    // Boutons de billets rapides (+5000, +10000, +20000)
+    document.querySelectorAll('[data-add]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const val = parseInt(this.getAttribute('data-add'), 10);
+            inputReceived.value = val;
+            updateCalculations();
+        });
+    });
+
+    // Initialisation au chargement
+    updateCalculations();
+</script>
+{% endblock %}

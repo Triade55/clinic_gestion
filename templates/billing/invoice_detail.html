@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Facture {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+
+    <!-- Barre d'actions supérieure (Masquée à l'impression) -->
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <a href="{% url 'billing:encaissement' %}" class="btn btn-secondary" style="font-size: 0.875rem;">
+                ← Retour à la caisse
+            </a>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{% url 'billing:encaissement' %}" class="btn btn-secondary" id="btn-new-receipt">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                + Nouvel Encaissement
+            </a>
+            <button onclick="window.print()" class="btn btn-primary" id="btn-print-invoice" style="padding: 0.75rem 1.5rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Imprimer le Reçu / Facture
+            </button>
+        </div>
+    </div>
+
+    <!-- DOCUMENT FACTURE / REÇU (Zone Imprimable) -->
+    <div class="invoice-container" id="printable-invoice">
+
+        <!-- En-tête Facture -->
+        <div class="invoice-header">
+            <div style="display: flex; align-items: center; gap: 0.85rem;">
+                <div class="brand-logo-icon" style="width: 48px; height: 48px;">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 2v20M2 12h20"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--neutral-900); letter-spacing: -0.02em;">Clinique SantéPlus</h2>
+                    <p style="font-size: 0.8rem; color: var(--neutral-600); margin-top: 2px;">Plateforme Médicale & Soins de Santé</p>
+                </div>
+            </div>
+
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Reçu d'Encaissement</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: var(--primary-800); letter-spacing: -0.01em;">
+                    {{ invoice.invoice_number }}
+                </div>
+                <div style="font-size: 0.825rem; color: var(--neutral-600); margin-top: 2px;">
+                    Date : {{ invoice.created_at|date:"d/m/Y à H:i" }}
+                </div>
+            </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid var(--neutral-200); margin: 1.5rem 0;">
+
+        <!-- CADRE PATIENT AVEC NUMÉRO UNIQUE DU PATIENT (IPP) -->
+        <div style="background: var(--primary-50); border: 2px solid var(--primary-200); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--primary-800); letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem;">
+                    Identifiant Permanent du Patient (Numéro Unique)
+                </span>
+                <span style="font-size: 1.6rem; font-weight: 900; color: var(--primary-900); letter-spacing: 0.05em; font-family: monospace;">
+                    {{ invoice.patient.patient_number }}
+                </span>
+                <span style="display: block; font-size: 0.75rem; color: var(--primary-700); margin-top: 0.25rem; font-weight: 500;">
+                    ★ Conservez précieusement ce numéro pour toutes vos prochaines consultations.
+                </span>
+            </div>
+
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Nom & Prénom du Patient</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: var(--neutral-900); margin-top: 0.2rem;">
+                    {{ invoice.patient.full_name }}
+                </div>
+                {% if invoice.patient.phone_number %}
+                <div style="font-size: 0.825rem; color: var(--neutral-600); margin-top: 0.2rem;">
+                    Tél : {{ invoice.patient.phone_number }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- TABLEAU DÉTAILLÉ DE LA PRESTATION -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.75rem;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--neutral-300); text-align: left;">
+                    <th style="padding: 0.75rem 0.5rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Désignation</th>
+                    <th style="padding: 0.75rem 0.5rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700; text-align: center;">Qté</th>
+                    <th style="padding: 0.75rem 0.5rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700; text-align: right;">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid var(--neutral-200);">
+                    <td style="padding: 1rem 0.5rem;">
+                        <div style="font-weight: 700; color: var(--neutral-900); font-size: 1rem;">
+                            Consultation — {{ invoice.specialty.name }}
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--neutral-500); margin-top: 0.2rem;">
+                            Acte de consultation médicale préalable
+                        </div>
+                    </td>
+                    <td style="padding: 1rem 0.5rem; text-align: center; font-weight: 600; color: var(--neutral-700);">
+                        1
+                    </td>
+                    <td style="padding: 1rem 0.5rem; text-align: right; font-weight: 800; font-size: 1.05rem; color: var(--neutral-900);">
+                        {{ invoice.consultation_fee|floatformat:0 }} FCFA
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- RÉCAPITULATIF FINANCIER & RENDU DE MONNAIE -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 2rem;">
+            <div style="width: 320px;">
+                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.95rem; color: var(--neutral-700);">
+                    <span>Total Consultation :</span>
+                    <strong style="color: var(--neutral-900);">{{ invoice.consultation_fee|floatformat:0 }} FCFA</strong>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.95rem; color: var(--neutral-700);">
+                    <span>Montant Reçu :</span>
+                    <strong style="color: var(--neutral-900);">{{ invoice.amount_received|floatformat:0 }} FCFA</strong>
+                </div>
+
+                {% if invoice.amount_change > 0 %}
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0.85rem; background: var(--success-bg); border: 1px solid var(--success-border); border-radius: var(--radius-md); font-size: 1.1rem; color: var(--success-text); margin-top: 0.5rem;">
+                    <span style="font-weight: 800;">MONNAIE RENDUE :</span>
+                    <strong style="font-weight: 900; font-size: 1.25rem;">{{ invoice.amount_change|floatformat:0 }} FCFA</strong>
+                </div>
+                {% elif invoice.amount_remaining > 0 %}
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0.85rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); font-size: 1.1rem; color: #b45309; margin-top: 0.5rem;">
+                    <span style="font-weight: 800;">RESTE À PAYER :</span>
+                    <strong style="font-weight: 900; font-size: 1.25rem;">{{ invoice.amount_remaining|floatformat:0 }} FCFA</strong>
+                </div>
+                {% else %}
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0.85rem; background: var(--neutral-100); border: 1px solid var(--neutral-300); border-radius: var(--radius-md); font-size: 1.05rem; color: var(--neutral-800); margin-top: 0.5rem;">
+                    <span style="font-weight: 700;">SOLDE :</span>
+                    <strong style="font-weight: 800;">0 FCFA (Soldé)</strong>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- BAS DE FACTURE / SIGNATURE CAISSE -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px dashed var(--neutral-300); padding-top: 1.5rem; font-size: 0.825rem; color: var(--neutral-500);">
+            <div>
+                <div><strong>Clinique SantéPlus</strong> — Tél: (+225) 01 02 03 04 05</div>
+                <div>Service d'Accueil & Facturation</div>
+                <div>Statut : <strong style="{% if invoice.amount_remaining > 0 %}color: #b45309;{% else %}color: var(--success-text);{% endif %}">{{ invoice.get_payment_status_display }}</strong></div>
+            </div>
+
+            <div style="text-align: right;">
+                <div>Encaissé par : <strong>{{ invoice.created_by.get_full_name|default:invoice.created_by.email }}</strong></div>
+                <div style="margin-top: 1rem; border-top: 1px solid var(--neutral-400); width: 150px; display: inline-block; padding-top: 0.25rem;">
+                    Cachet / Signature
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Styles spécifiques Facture & Impression -->
+<style>
+    .invoice-container {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid var(--neutral-300);
+        border-radius: var(--radius-lg);
+        padding: 2.5rem;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .invoice-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    @media print {
+        body {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .clinic-navbar,
+        .clinic-footer,
+        .no-print,
+        .messages-container {
+            display: none !important;
+        }
+
+        .main-content {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
+
+        .invoice-container {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 1cm !important;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+
+        @page {
+            margin: 1cm;
+            size: A4 portrait;
+        }
+    }
+</style>
+{% endblock %}

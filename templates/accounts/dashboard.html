@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Tableau de Bord{% endblock %}
+
+{% block content %}
+<div class="main-content">
+
+    <!-- Hero d'accueil avec profil et badge de rôle -->
+    <div class="dashboard-hero">
+        <div class="hero-content">
+            <span class="hero-role-pill">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="8" r="4"></circle>
+                    <path d="M20 21a8 8 0 0 0-16 0"></path>
+                </svg>
+                Espace {{ user_role_label }}
+            </span>
+            <h1 class="hero-title">
+                Bienvenue, {% if user.first_name %}{{ user.first_name }} {{ user.last_name }}{% else %}{{ user.email }}{% endif %}
+            </h1>
+            <p class="hero-subtitle">
+                {% if user.is_doctor %}
+                    Praticien référent {% if user.specialty %}({{ user.specialty }}){% endif %} — Consultez vos rendez-vous du jour et les dossiers médicaux des patients.
+                {% elif user.is_nurse %}
+                    Personnel soignant — Suivi des soins, constantes vitales et administration des traitements.
+                {% elif user.is_secretary %}
+                    Accueil & Secrétariat — Gestion des admissions, rendez-vous et orientation des patients.
+                {% elif user.is_admin_role %}
+                    Administration générale — Pilotage de la clinique, gestion des accès du personnel et supervision.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Actions Rapides Selon le Rôle -->
+    <div class="role-actions-container">
+        <h2 class="section-heading">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary-600);">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Modules & Actions Clés (Rôle : {{ user_role_label }})
+        </h2>
+
+        <div class="grid-cards">
+            {% if user.is_admin_role %}
+            <!-- Cartes Admin -->
+            <div class="dashboard-card">
+                <div class="card-icon-container">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <h3 class="card-title">Personnel & Accès</h3>
+                <p class="card-desc">Gérer les comptes utilisateurs (médecins, infirmiers, secrétaires), rôles et autorisations.</p>
+                <a href="{% url 'admin:accounts_user_changelist' %}" class="btn btn-secondary" target="_blank">
+                    Gérer les utilisateurs
+                </a>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-icon-container">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 20h9"></path>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                    </svg>
+                </div>
+                <h3 class="card-title">Créer un Compte Soignant</h3>
+                <p class="card-desc">Ajouter un nouveau médecin, infirmier ou secrétaire avec son adresse email professionnelle.</p>
+                <a href="{% url 'admin:accounts_user_add' %}" class="btn btn-primary" target="_blank">
+                    + Nouveau membre
+                </a>
+            </div>
+            {% endif %}
+
+            {% if user.is_doctor or user.is_admin_role %}
+            <!-- Cartes Médecin -->
+            <div class="dashboard-card">
+                <div class="card-icon-container">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                </div>
+                <h3 class="card-title">Consultations Médicales</h3>
+                <p class="card-desc">Accéder aux dossiers cliniques, ordonnances et historiques de santé des patients.</p>
+                <button class="btn btn-secondary" disabled title="Prochain module">
+                    Module Dossiers (À venir)
+                </button>
+            </div>
+            {% endif %}
+
+            {% if user.is_nurse or user.is_admin_role %}
+            <!-- Cartes Infirmier -->
+            <div class="dashboard-card">
+                <div class="card-icon-container">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                    </svg>
+                </div>
+                <h3 class="card-title">Soins & Constantes</h3>
+                <p class="card-desc">Saisie des constantes vitales (tension, température, pouls) et administration des soins.</p>
+                <button class="btn btn-secondary" disabled title="Prochain module">
+                    Module Soins (À venir)
+                </button>
+            </div>
+            {% endif %}
+
+            {% if user.is_secretary or user.is_admin_role %}
+            <!-- Cartes Secrétariat -->
+            <div class="dashboard-card" style="border: 2px solid var(--primary-200); background: #ffffff;">
+                <div class="card-icon-container" style="background: var(--primary-100); color: var(--primary-700);">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                </div>
+                <h3 class="card-title">Caisse & Encaissement</h3>
+                <p class="card-desc">Enregistrer un patient (ou retrouver son N° unique), encaisser la consultation, calculer la monnaie et imprimer la facture.</p>
+                <a href="{% url 'billing:encaissement' %}" class="btn btn-primary" id="btn-card-encaissement">
+                    Ouvrir la Caisse & Reçu
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Fiche Information Profil Actif -->
+    <div class="role-actions-container">
+        <h2 class="section-heading">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary-600);">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Détails de Session & Sécurité
+        </h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+            <div style="background: var(--neutral-50); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--neutral-200);">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 600;">Email de connexion</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: var(--neutral-900); margin-top: 0.25rem;">{{ user.email }}</div>
+            </div>
+            <div style="background: var(--neutral-50); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--neutral-200);">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 600;">Rôle attribué</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: var(--neutral-900); margin-top: 0.25rem;">{{ user.get_role_display }}</div>
+            </div>
+            {% if user.specialty %}
+            <div style="background: var(--neutral-50); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--neutral-200);">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 600;">Spécialité</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: var(--neutral-900); margin-top: 0.25rem;">{{ user.specialty }}</div>
+            </div>
+            {% endif %}
+            <div style="background: var(--neutral-50); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--neutral-200);">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 600;">Dernière connexion</div>
+                <div style="font-size: 0.95rem; font-weight: 600; color: var(--neutral-900); margin-top: 0.25rem;">{{ user.last_login|date:"d/m/Y H:i"|default:"Première connexion" }}</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

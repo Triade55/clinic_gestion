@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Historique des Encaissements{% endblock %}
+
+{% block content %}
+<div class="main-content">
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="font-size: 1.75rem; color: var(--neutral-900);">Historique des Factures & Encaissements</h1>
+            <p style="color: var(--neutral-600); font-size: 0.925rem;">Recherchez un reçu par numéro de facture, nom ou numéro de patient.</p>
+        </div>
+        <div>
+            <a href="{% url 'billing:encaissement' %}" class="btn btn-primary" id="btn-new-intake">
+                + Nouvel Encaissement
+            </a>
+        </div>
+    </div>
+
+    <!-- Barre de Recherche -->
+    <div style="background: #ffffff; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--neutral-200); margin-bottom: 1.5rem; box-shadow: var(--shadow-sm);">
+        <form method="get" style="display: flex; gap: 0.75rem;">
+            <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Rechercher par N° Patient (ex: PAT-2026-0001), Nom ou N° Facture..." style="flex: 1;" autofocus>
+            <button type="submit" class="btn btn-secondary">
+                Rechercher
+            </button>
+            {% if search_query %}
+            <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary">Réinitialiser</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tableau des Factures -->
+    <div style="background: #ffffff; border-radius: var(--radius-lg); border: 1px solid var(--neutral-200); overflow: hidden; box-shadow: var(--shadow-sm);">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--neutral-100); text-align: left; border-bottom: 1px solid var(--neutral-300);">
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600);">N° Facture</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600);">N° Patient</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600);">Nom du Patient</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600);">Spécialité</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600); text-align: right;">Tarif</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600); text-align: right;">Reçu</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600); text-align: center;">Règlement / Statut</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600); text-align: center;">Date</th>
+                    <th style="padding: 0.85rem 1rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-600); text-align: center;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr style="border-bottom: 1px solid var(--neutral-200);">
+                    <td style="padding: 0.85rem 1rem; font-weight: 700; color: var(--primary-800);">
+                        {{ inv.invoice_number }}
+                    </td>
+                    <td style="padding: 0.85rem 1rem; font-family: monospace; font-weight: 700; color: var(--neutral-800);">
+                        {{ inv.patient.patient_number }}
+                    </td>
+                    <td style="padding: 0.85rem 1rem; font-weight: 600; color: var(--neutral-900);">
+                        {{ inv.patient.full_name }}
+                    </td>
+                    <td style="padding: 0.85rem 1rem; color: var(--neutral-700);">
+                        {{ inv.specialty.name }}
+                    </td>
+                    <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 700; color: var(--neutral-900);">
+                        {{ inv.consultation_fee|floatformat:0 }} FCFA
+                    </td>
+                    <td style="padding: 0.85rem 1rem; text-align: right; font-weight: 600; color: var(--neutral-700);">
+                        {{ inv.amount_received|floatformat:0 }} FCFA
+                    </td>
+                    <td style="padding: 0.85rem 1rem; text-align: center;">
+                        {% if inv.amount_remaining > 0 %}
+                        <span style="display: inline-block; padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
+                            Reste: {{ inv.amount_remaining|floatformat:0 }} FCFA
+                        </span>
+                        {% elif inv.amount_change > 0 %}
+                        <span style="display: inline-block; padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border);">
+                            Rendu: {{ inv.amount_change|floatformat:0 }} FCFA
+                        </span>
+                        {% else %}
+                        <span style="display: inline-block; padding: 0.2rem 0.55rem; border-radius: 99px; font-size: 0.75rem; font-weight: 700; background: var(--neutral-100); color: var(--neutral-700); border: 1px solid var(--neutral-300);">
+                            Soldé
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.85rem 1rem; text-align: center; font-size: 0.825rem; color: var(--neutral-500);">
+                        {{ inv.created_at|date:"d/m/Y H:i" }}
+                    </td>
+                    <td style="padding: 0.85rem 1rem; text-align: center;">
+                        <a href="{% url 'billing:invoice_detail' inv.pk %}" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" title="Voir et imprimer">
+                            Imprimer
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="padding: 2.5rem 1rem; text-align: center; color: var(--neutral-500);">
+                        Aucune facture trouvée.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}
