@@ -11,8 +11,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Injecter le fichier .env
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+
       - name: Build & Restart Containers
         run: |
           docker compose down
           docker compose up -d --build
-          
