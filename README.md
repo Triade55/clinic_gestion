@@ -37,7 +37,28 @@ Plateforme de gestion pour clinique médicale développée avec **Django** (rend
 - Python 3.12+
 - Django 6.1+
 
-### Installation
+### Lancement Rapide avec Docker Compose 🐳 (Recommandé)
+
+Le projet intègre une configuration Docker Compose de production avec serveur d'application **Gunicorn**, serveur de fichiers statiques optimisé **WhiteNoise**, base de données relationnelle **PostgreSQL 16**, et initialisation automatique :
+
+```bash
+# 1. Copier le fichier d'environnement (optionnel, valeurs par défaut incluses)
+cp .env.example .env
+
+# 2. Construire et démarrer les conteneurs (Django Web + PostgreSQL)
+docker compose up -d --build
+
+# 3. Consulter les journaux en direct
+docker compose logs -f web
+```
+L'application est immédiatement accessible sur : **`http://localhost:8000/`**.
+
+> 💡 Les migrations de schéma et les données de démonstration (`seed_users`, `seed_billing`) sont appliquées automatiquement au premier démarrage via `AUTO_SEED=1`.
+
+---
+
+### Installation Locale Traditionnelle (Alternative)
+
 ```bash
 # Cloner le dépôt
 git clone <url_du_depot>
@@ -47,23 +68,16 @@ cd clinic_gestion
 source .venv/bin/activate
 
 # Installer les dépendances
-pip install django
+pip install -r requirements.txt
 
 # Appliquer les migrations
 python manage.py migrate
-```
 
-### Initialiser les Données de Démonstration (Seed)
-```bash
-# 1. Créer les comptes professionnels de démonstration
+# Initialiser les données de démonstration (Seed)
 python manage.py seed_users
-
-# 2. Créer les spécialités, tarifs FCFA et patients de test
 python manage.py seed_billing
-```
 
-### Lancer le Serveur
-```bash
+# Lancer le serveur de développement
 python manage.py runserver
 ```
 L'application est accessible sur : `http://127.0.0.1:8000/`.
