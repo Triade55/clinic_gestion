@@ -28,7 +28,7 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/accounts/login/"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/accounts/login/" ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -45,7 +45,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clinic_user} -d ${POSTGRES_DB:-clinic_db}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clinic_user} -d ${POSTGRES_DB:-clinic_db}" ]
       interval: 5s
       timeout: 5s
       retries: 5
