@@ -4,7 +4,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from billing.forms import EncaissementForm
-from billing.models import Invoice, Patient, Specialty
+from billing.models import Invoice, InvoicePayment, Patient, Specialty
 
 User = get_user_model()
 
@@ -85,6 +85,68 @@ class BillingModelTests(TestCase):
         )
         with self.assertRaises(ValidationError):
             invoice.clean()
+
+    def test_invoice_subsequent_installment_payments_and_settlement(self):
+        patient = Patient.objects.create(
+            patient_number="PAT-2026-0102",
+            first_name="Amara",
+            last_name="Diarra",
+        )
+        # 1. Facture initiale avec acompte de 2 000 sur un tarif de 5 000 (reste 3 000)
+        invoice = Invoice.objects.create(
+            patient=patient,
+            specialty=self.specialty,
+            consultation_fee=5000,
+            amount_received=2000,
+            created_by=self.secretary,
+        )
+        self.assertEqual(invoice.amount_remaining, 3000)
+        self.assertEqual(invoice.payment_status, Invoice.PaymentStatus.PARTIAL)
+        self.assertEqual(invoice.payments.count(), 1)
+        self.assertEqual(invoice.payments.first().amount_paid, 2000)
+
+        # 2. Le patient revient plus tard et verse 1 000 FCFA
+        p2 = invoice.add_payment(amount_paid=1000, created_by=self.secretary)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.amount_received, 3000)
+        self.assertEqual(invoice.amount_remaining, 2000)
+        self.assertEqual(invoice.payment_status, Invoice.PaymentStatus.PARTIAL)
+        self.assertEqual(invoice.payments.count(), 2)
+
+        # 3. Le patient revient pour solder les 2 000 FCFA restants en donnant un billet de 5 000 FCFA
+        p3 = invoice.add_payment(
+            amount_paid=2000,
+            amount_received=5000,
+            amount_change=3000,
+            created_by=self.secretary,
+        )
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.amount_received, 5000)
+        self.assertEqual(invoice.amount_remaining, 0)
+        self.assertEqual(invoice.payment_status, Invoice.PaymentStatus.PAID)
+        self.assertEqual(invoice.payments.count(), 3)
+        self.assertEqual(p3.amount_change, 3000)
+
+    def test_add_payment_validation_errors(self):
+        patient = Patient.objects.create(
+            patient_number="PAT-2026-0103",
+            first_name="Koffi",
+            last_name="Yao",
+        )
+        invoice = Invoice.objects.create(
+            patient=patient,
+            specialty=self.specialty,
+            consultation_fee=5000,
+            amount_received=2000,
+            created_by=self.secretary,
+        )
+        # Tentative de verser 0 ou négatif
+        with self.assertRaises(ValidationError):
+            invoice.add_payment(amount_paid=0, created_by=self.secretary)
+
+        # Tentative de verser plus que le reliquat restant dû (reste 3000, tente 4000)
+        with self.assertRaises(ValidationError):
+            invoice.add_payment(amount_paid=4000, created_by=self.secretary)
 
 
 class EncaissementViewTests(TestCase):
@@ -241,4 +303,69 @@ class EncaissementViewTests(TestCase):
         self.client.logout()
         res = self.client.get(reverse("billing:patient_search"), {"q": "test"})
         self.assertEqual(res.status_code, 302)
+
+    def test_invoice_payment_flow_get_and_post(self):
+        patient = Patient.objects.create(
+            patient_number="PAT-2026-0777",
+            first_name="Issa",
+            last_name="Traoré",
+        )
+        invoice = Invoice.objects.create(
+            patient=patient,
+            specialty=self.specialty,
+            consultation_fee=7500,
+            amount_received=2500,  # Acompte initial -> reste 5000
+            created_by=self.secretary,
+        )
+        self.assertEqual(invoice.amount_remaining, 5000)
+
+        # 1. GET page de versement
+        pay_url = reverse("billing:invoice_pay", kwargs={"pk": invoice.pk})
+        res_get = self.client.get(pay_url)
+        self.assertEqual(res_get.status_code, 200)
+        self.assertContains(res_get, "Encaisser un Versement")
+        self.assertContains(res_get, "5000")
+
+        # 2. POST premier versement partiel de 2 000 FCFA
+        res_post1 = self.client.post(
+            pay_url,
+            {
+                "amount_paid": 2000,
+                "amount_received": 2000,
+                "payment_method": "ESPECES",
+                "note": "Deuxième acompte",
+            },
+            follow=True,
+        )
+        self.assertEqual(res_post1.status_code, 200)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.amount_received, 4500)
+        self.assertEqual(invoice.amount_remaining, 3000)
+        self.assertEqual(invoice.payment_status, Invoice.PaymentStatus.PARTIAL)
+        self.assertContains(res_post1, "Reçu de Versement")
+        self.assertContains(res_post1, "2000")
+
+        # 3. POST solde des 3 000 FCFA restants avec billet de 5 000 FCFA (monnaie 2 000)
+        res_post2 = self.client.post(
+            pay_url,
+            {
+                "amount_paid": 3000,
+                "amount_received": 5000,
+                "payment_method": "ESPECES",
+                "note": "Solde complet",
+            },
+            follow=True,
+        )
+        self.assertEqual(res_post2.status_code, 200)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.amount_received, 7500)
+        self.assertEqual(invoice.amount_remaining, 0)
+        self.assertEqual(invoice.payment_status, Invoice.PaymentStatus.PAID)
+        self.assertContains(res_post2, "SOLDÉ")
+        self.assertContains(res_post2, "2000")  # Monnaie rendue
+
+        # 4. Nouvelle tentative sur facture déjà soldée -> redirection
+        res_already_paid = self.client.get(pay_url)
+        self.assertEqual(res_already_paid.status_code, 302)
+
 

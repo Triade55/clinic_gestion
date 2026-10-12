@@ -10,12 +10,15 @@ from django.contrib.auth.views import (
     PasswordResetDoneView,
     PasswordResetView,
 )
+from django.db.models import F, Sum
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.views import View
 from django.views.generic import TemplateView
 
+from billing.models import Invoice, InvoicePayment, Patient
 from .forms import ClinicAuthenticationForm
 
 
@@ -59,6 +62,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     """
     Tableau de bord d'accueil après authentification,
     adapté dynamiquement selon le rôle du personnel médical ou administratif.
+    Fournit les statistiques de caisse et impayés pour la secrétaire et la direction.
     """
     template_name = "accounts/dashboard.html"
 
@@ -67,6 +71,41 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         user = self.request.user
         context["user_role"] = user.role
         context["user_role_label"] = user.get_role_display()
+
+        today = timezone.localdate()
+
+        # Indicateurs clés pour le Secrétariat / Caisse et l'Administration
+        if user.is_secretary or user.is_admin_role:
+            invoices_today = Invoice.objects.filter(created_at__date=today)
+
+            # Montant encaissé aujourd'hui = total des encaissements et règlements perçus ce jour
+            today_collected = InvoicePayment.objects.filter(created_at__date=today).aggregate(
+                total=Sum("amount_paid")
+            )["total"]
+            if today_collected is None:
+                today_collected = invoices_today.aggregate(
+                    total=Sum(F("amount_received") - F("amount_change"))
+                )["total"] or 0
+
+            # Nombre de patients enregistrés aujourd'hui
+            today_patients_count = Patient.objects.filter(created_at__date=today).count()
+
+            # Factures non soldées (reste à payer > 0)
+            unpaid_invoices = Invoice.objects.filter(amount_remaining__gt=0).select_related(
+                "patient", "specialty"
+            ).order_by("-created_at")
+
+            total_unpaid_remaining = unpaid_invoices.aggregate(
+                total=Sum("amount_remaining")
+            )["total"] or 0
+
+            context["today_collected"] = today_collected
+            context["today_invoices_count"] = invoices_today.count()
+            context["today_patients_count"] = today_patients_count
+            context["total_unpaid_remaining"] = total_unpaid_remaining
+            context["unpaid_invoices"] = unpaid_invoices
+            context["unpaid_invoices_count"] = unpaid_invoices.count()
+
         return context
 
 

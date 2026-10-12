@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from .models import Invoice, Patient, Specialty
+from .models import Invoice, InvoicePayment, Patient, Specialty
 
 
 class EncaissementForm(forms.Form):
@@ -140,5 +140,109 @@ class EncaissementForm(forms.Form):
         # Le montant perçu peut être inférieur (acompte / paiement partiel), égal ou supérieur (monnaie rendue)
         if amount_received is not None and amount_received < 0:
             self.add_error("amount_received", _("Le montant reçu ne peut pas être négatif."))
+
+        return cleaned_data
+
+
+class InvoicePaymentForm(forms.Form):
+    """
+    Formulaire pour enregistrer un versement / acompte sur une facture non soldée.
+    Permet au patient de solder la totalité ou de verser des montants partiels successifs.
+    """
+    amount_paid = forms.DecimalField(
+        label=_("Montant du versement à imputer (FCFA)"),
+        max_digits=10,
+        decimal_places=0,
+        min_value=1,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control amount-input",
+                "id": "id_amount_paid",
+                "placeholder": "ex: 2000",
+                "step": "500",
+                "required": True,
+            }
+        ),
+        help_text=_("Montant effectif déduit du reliquat restant dû."),
+    )
+    amount_received = forms.DecimalField(
+        label=_("Espèces remises par le patient (FCFA)"),
+        max_digits=10,
+        decimal_places=0,
+        min_value=0,
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "id": "id_amount_received",
+                "placeholder": "ex: 5000",
+                "step": "500",
+            }
+        ),
+        help_text=_("Optionnel : saisissez si le patient donne un billet supérieur pour calculer la monnaie."),
+    )
+    payment_method = forms.ChoiceField(
+        label=_("Mode de règlement"),
+        choices=InvoicePayment.PaymentMethod.choices,
+        initial=InvoicePayment.PaymentMethod.CASH,
+        widget=forms.Select(
+            attrs={
+                "class": "form-control",
+                "id": "id_payment_method",
+            }
+        ),
+    )
+    note = forms.CharField(
+        label=_("Observation / Référence"),
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "id": "id_note",
+                "placeholder": "ex: Versement partiel, référence Wave...",
+            }
+        ),
+    )
+
+    def __init__(self, *args, invoice=None, **kwargs):
+        self.invoice = invoice
+        super().__init__(*args, **kwargs)
+        if invoice:
+            rem = int(invoice.amount_remaining)
+            self.fields["amount_paid"].initial = rem
+            self.fields["amount_paid"].widget.attrs["max"] = rem
+            self.fields["amount_received"].initial = rem
+
+    def clean_amount_paid(self):
+        amount_paid = self.cleaned_data.get("amount_paid")
+        if self.invoice and amount_paid is not None:
+            if amount_paid <= 0:
+                raise ValidationError(_("Le montant du versement doit être strictement positif."))
+            if amount_paid > self.invoice.amount_remaining:
+                rem_formatted = f"{int(self.invoice.amount_remaining):,}".replace(",", " ")
+                raise ValidationError(
+                    _(f"Le montant du versement ne peut pas dépasser le solde restant dû ({rem_formatted} FCFA).")
+                )
+        return amount_paid
+
+    def clean(self):
+        cleaned_data = super().clean()
+        amount_paid = cleaned_data.get("amount_paid")
+        amount_received = cleaned_data.get("amount_received")
+
+        if amount_paid is not None:
+            if amount_received is None or amount_received == 0:
+                # Appoint exact
+                cleaned_data["amount_received"] = amount_paid
+                cleaned_data["amount_change"] = 0
+            else:
+                if amount_received < amount_paid:
+                    self.add_error(
+                        "amount_received",
+                        _(f"Les espèces remises ({int(amount_received):,} FCFA) ne peuvent pas être inférieures au versement ({int(amount_paid):,} FCFA).".replace(",", " ")),
+                    )
+                else:
+                    cleaned_data["amount_change"] = amount_received - amount_paid
 
         return cleaned_data

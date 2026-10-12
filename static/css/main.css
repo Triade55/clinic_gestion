@@ -875,3 +875,84 @@ a:hover {
   }
 }
 
+/* ==========================================================================
+   Dashboard KPI Cards & Unpaid Hover Popover
+   ========================================================================== */
+.dashboard-kpi-card {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.dashboard-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.unpaid-hover-trigger {
+  position: relative;
+}
+
+.unpaid-popover {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 420px;
+  max-width: 90vw;
+  background: #ffffff;
+  border: 1.5px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  animation: popoverFadeIn 0.2s ease-out;
+}
+
+.unpaid-popover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 28px;
+  width: 12px;
+  height: 12px;
+  background: var(--neutral-900);
+  transform: rotate(45deg);
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.unpaid-hover-trigger:hover .unpaid-popover,
+.unpaid-hover-trigger:focus-within .unpaid-popover,
+.unpaid-hover-trigger.is-active .unpaid-popover {
+  display: block;
+}
+
+.unpaid-item-row:hover {
+  background-color: var(--neutral-100) !important;
+}
+
+@media (max-width: 640px) {
+  .unpaid-popover {
+    position: fixed;
+    top: auto;
+    bottom: 20px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: 80vh;
+    box-shadow: var(--shadow-xl);
+  }
+  .unpaid-popover::before {
+    display: none;
+  }
+}
+
+

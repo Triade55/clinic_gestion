@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reçu de Versement {{ payment.payment_number }}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+
+    <!-- Actions supérieures (Masquées à l'impression) -->
+    <div class="no-print page-header-flex" style="margin-bottom: 2rem;">
+        <div>
+            <a href="{% url 'billing:invoice_detail' payment.invoice.pk %}" class="btn btn-secondary" style="font-size: 0.875rem;">
+                ← Revenir à la Facture
+            </a>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            {% if payment.invoice.amount_remaining > 0 %}
+            <a href="{% url 'billing:invoice_pay' payment.invoice.pk %}" class="btn btn-secondary">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Autre Versement
+            </a>
+            {% endif %}
+            <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary">
+                Tableau de Bord
+            </a>
+            <button onclick="window.print()" class="btn btn-primary" id="btn-print-payment" style="padding: 0.75rem 1.5rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Imprimer le Reçu de Versement
+            </button>
+        </div>
+    </div>
+
+    <!-- DOCUMENT REÇU DE VERSEMENT (Zone Imprimable) -->
+    <div class="invoice-container" id="printable-payment-receipt">
+
+        <!-- En-tête du Reçu -->
+        <div class="invoice-header">
+            <div style="display: flex; align-items: center; gap: 0.85rem;">
+                <div class="brand-logo-icon" style="width: 48px; height: 48px;">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 2v20M2 12h20"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--neutral-900); letter-spacing: -0.02em;">Clinique SantéPlus</h2>
+                    <p style="font-size: 0.8rem; color: var(--neutral-600); margin-top: 2px;">Caisse & Règlements de Soins</p>
+                </div>
+            </div>
+
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Reçu de Versement / Règlement</div>
+                <div style="font-size: 1.35rem; font-weight: 900; color: var(--primary-800); letter-spacing: -0.01em; font-family: monospace;">
+                    {{ payment.payment_number }}
+                </div>
+                <div style="font-size: 0.825rem; color: var(--neutral-600); margin-top: 2px;">
+                    Date : {{ payment.created_at|date:"d/m/Y à H:i" }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Référence Facture Initiale -->
+        <div style="margin: 1.25rem 0; padding: 0.65rem 1rem; background: var(--neutral-50); border: 1px solid var(--neutral-200); border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+            <span>Facture rattachée : <strong style="color: var(--primary-800);">{{ payment.invoice.invoice_number }}</strong></span>
+            <span>Spécialité : <strong>{{ payment.invoice.specialty.name }}</strong></span>
+        </div>
+
+        <!-- Encadré Patient avec IPP -->
+        <div class="invoice-patient-box" style="background: var(--primary-50); border: 2px solid var(--primary-200); border-radius: var(--radius-md); padding: 1.25rem 1.5rem; margin-bottom: 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--primary-800); letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem;">
+                    Identifiant Permanent du Patient (IPP)
+                </span>
+                <span style="font-size: 1.5rem; font-weight: 900; color: var(--primary-900); font-family: monospace;">
+                    {{ payment.invoice.patient.patient_number }}
+                </span>
+            </div>
+
+            <div style="text-align: right;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Nom & Prénom du Patient</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: var(--neutral-900); margin-top: 0.2rem;">
+                    {{ payment.invoice.patient.full_name }}
+                </div>
+                {% if payment.invoice.patient.phone_number %}
+                <div style="font-size: 0.825rem; color: var(--neutral-600); margin-top: 0.2rem;">
+                    Tél : {{ payment.invoice.patient.phone_number }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tableau Détail du Versement -->
+        <div style="margin-bottom: 1.75rem;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--neutral-300); text-align: left;">
+                        <th style="padding: 0.75rem 0.5rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Objet du Versement</th>
+                        <th style="padding: 0.75rem 0.5rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Mode</th>
+                        <th style="padding: 0.75rem 0.5rem; font-size: 0.8rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700; text-align: right;">Montant Versé</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--neutral-200);">
+                        <td style="padding: 1.15rem 0.5rem;">
+                            <div style="font-weight: 800; color: var(--neutral-900); font-size: 1.05rem;">
+                                Règlement partiel / solde sur consultation
+                            </div>
+                            <div style="font-size: 0.825rem; color: var(--neutral-500); margin-top: 0.2rem;">
+                                {{ payment.invoice.specialty.name }} — Réf : {{ payment.invoice.invoice_number }}
+                                {% if payment.note %}• {{ payment.note }}{% endif %}
+                            </div>
+                        </td>
+                        <td style="padding: 1.15rem 0.5rem; font-weight: 600; color: var(--neutral-700);">
+                            {{ payment.get_payment_method_display }}
+                        </td>
+                        <td style="padding: 1.15rem 0.5rem; text-align: right; font-weight: 900; font-size: 1.35rem; color: var(--primary-800);">
+                            {{ payment.amount_paid|floatformat:0 }} FCFA
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Récapitulatif Financier Complet -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 2rem;">
+            <div style="width: 100%; max-width: 360px;">
+                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.95rem; color: var(--neutral-700);">
+                    <span>Tarif total consultation :</span>
+                    <strong style="color: var(--neutral-900);">{{ payment.invoice.consultation_fee|floatformat:0 }} FCFA</strong>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.95rem; color: var(--neutral-700);">
+                    <span>Montant de ce versement :</span>
+                    <strong style="color: var(--primary-700); font-size: 1.05rem;">{{ payment.amount_paid|floatformat:0 }} FCFA</strong>
+                </div>
+
+                {% if payment.amount_change > 0 %}
+                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.9rem; color: var(--neutral-600);">
+                    <span>Espèces remises :</span>
+                    <span>{{ payment.amount_received|floatformat:0 }} FCFA</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0.75rem; background: var(--success-bg); border-radius: var(--radius-sm); font-size: 0.95rem; color: var(--success-text); margin: 0.25rem 0;">
+                    <span style="font-weight: 700;">Monnaie rendue :</span>
+                    <strong style="font-weight: 800;">{{ payment.amount_change|floatformat:0 }} FCFA</strong>
+                </div>
+                {% endif %}
+
+                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0; font-size: 0.95rem; color: var(--neutral-700); border-top: 1px dashed var(--neutral-300); margin-top: 0.35rem; padding-top: 0.5rem;">
+                    <span>Total cumulé réglé à ce jour :</span>
+                    <strong style="color: #15803d; font-size: 1.05rem;">{{ payment.invoice.amount_received|floatformat:0 }} FCFA</strong>
+                </div>
+
+                <!-- État du Solde restant -->
+                {% if payment.invoice.amount_remaining == 0 %}
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0.85rem; background: var(--success-bg); border: 2px solid var(--success-border); border-radius: var(--radius-md); font-size: 1.05rem; color: var(--success-text); margin-top: 0.65rem;">
+                    <span style="font-weight: 800;">SOLDE DE LA FACTURE :</span>
+                    <strong style="font-weight: 900; font-size: 1.2rem;">0 FCFA (SOLDÉ) 🎉</strong>
+                </div>
+                {% else %}
+                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0.85rem; background: #fffbeb; border: 2px solid #fde68a; border-radius: var(--radius-md); font-size: 1.05rem; color: #b45309; margin-top: 0.65rem;">
+                    <span style="font-weight: 800;">RESTE À PAYER :</span>
+                    <strong style="font-weight: 900; font-size: 1.25rem;">{{ payment.invoice.amount_remaining|floatformat:0 }} FCFA</strong>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Bas de reçu / Signatures -->
+        <div class="invoice-footer-signatures" style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px dashed var(--neutral-300); padding-top: 1.5rem; font-size: 0.825rem; color: var(--neutral-500); flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <div><strong>Clinique SantéPlus</strong> — Service Caisse & Facturation</div>
+                <div>Reçu n° {{ payment.payment_number }} pour la facture {{ payment.invoice.invoice_number }}</div>
+                <div>Statut actuel : <strong style="{% if payment.invoice.amount_remaining == 0 %}color: var(--success-text);{% else %}color: #b45309;{% endif %}">{{ payment.invoice.get_payment_status_display }}</strong></div>
+            </div>
+
+            <div style="text-align: right;">
+                <div>Encaissé par : <strong>{{ payment.created_by.get_full_name|default:payment.created_by.email }}</strong></div>
+                <div style="margin-top: 1rem; border-top: 1px solid var(--neutral-400); width: 150px; display: inline-block; padding-top: 0.25rem;">
+                    Cachet Caisse
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Styles spécifiques Reçu & Impression -->
+<style>
+    .invoice-container {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid var(--neutral-300);
+        border-radius: var(--radius-lg);
+        padding: 2.5rem;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .invoice-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+        .invoice-container {
+            padding: 1.25rem 1rem !important;
+            border-radius: var(--radius-md) !important;
+        }
+        .invoice-patient-box {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+        }
+        .invoice-patient-box > div:last-child {
+            text-align: left !important;
+            margin-top: 0.25rem;
+        }
+        .invoice-footer-signatures {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1.25rem;
+        }
+        .invoice-footer-signatures > div:last-child {
+            text-align: left !important;
+        }
+    }
+
+    @media print {
+        body {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .clinic-navbar,
+        .clinic-footer,
+        .no-print,
+        .messages-container {
+            display: none !important;
+        }
+
+        .main-content {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
+
+        .invoice-container {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 1cm !important;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+
+        @page {
+            margin: 1cm;
+            size: A4 portrait;
+        }
+    }
+</style>
+{% endblock %}

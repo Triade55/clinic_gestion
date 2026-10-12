@@ -28,6 +28,19 @@
             <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary">Réinitialiser</a>
             {% endif %}
         </form>
+
+        <!-- Filtres rapides par statut -->
+        <div style="display: flex; gap: 0.5rem; margin-top: 1rem; border-top: 1px solid var(--neutral-150); padding-top: 0.85rem; flex-wrap: wrap;">
+            <a href="{% url 'billing:invoice_list' %}{% if search_query %}?q={{ search_query }}{% endif %}" class="btn {% if not current_status %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 0.8rem; padding: 0.35rem 0.75rem;">
+                Toutes ({{ total_count }})
+            </a>
+            <a href="{% url 'billing:invoice_list' %}?status=unpaid{% if search_query %}&q={{ search_query }}{% endif %}" class="btn {% if current_status == 'unpaid' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; {% if current_status == 'unpaid' %}background: #d97706; border-color: #b45309;{% endif %}">
+                ⚠️ Non Soldées ({{ unpaid_count }})
+            </a>
+            <a href="{% url 'billing:invoice_list' %}?status=paid{% if search_query %}&q={{ search_query }}{% endif %}" class="btn {% if current_status == 'paid' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; {% if current_status == 'paid' %}background: #15803d; border-color: #166534;{% endif %}">
+                ✓ Soldées ({{ paid_count }})
+            </a>
+        </div>
     </div>
 
     <!-- Tableau des Factures avec Scroll Horizontal Adaptatif -->
@@ -86,9 +99,16 @@
                         {{ inv.created_at|date:"d/m/Y H:i" }}
                     </td>
                     <td style="padding: 0.85rem 1rem; text-align: center; white-space: nowrap;">
-                        <a href="{% url 'billing:invoice_detail' inv.pk %}" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;" title="Voir et imprimer">
-                            Imprimer
-                        </a>
+                        <div style="display: flex; gap: 0.35rem; justify-content: center; align-items: center;">
+                            {% if inv.amount_remaining > 0 %}
+                            <a href="{% url 'billing:invoice_pay' inv.pk %}" class="btn btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.775rem; background: #d97706; border-color: #b45309; font-weight: 700;" title="Encaisser un versement ou solder">
+                                💳 Solder
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'billing:invoice_detail' inv.pk %}" class="btn btn-secondary" style="padding: 0.3rem 0.65rem; font-size: 0.775rem;" title="Voir et imprimer">
+                                Détail / Reçu
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

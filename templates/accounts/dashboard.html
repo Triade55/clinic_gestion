@@ -32,6 +32,186 @@
         </div>
     </div>
 
+    {% if user.is_secretary or user.is_admin_role %}
+    <!-- ======================================================== -->
+    <!-- SECTION INDICATEURS DU JOUR : CAISSE & ACCUEIL           -->
+    <!-- ======================================================== -->
+    <div class="role-actions-container" style="margin-bottom: 2rem; border-top: 4px solid var(--primary-600); position: relative;">
+        <div class="page-header-flex" style="margin-bottom: 1.25rem;">
+            <div>
+                <h2 class="section-heading" style="margin-bottom: 0.25rem;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--primary-600);">
+                        <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                    </svg>
+                    Indicateurs Caisse & Accueil (Aujourd'hui)
+                </h2>
+                <p style="font-size: 0.875rem; color: var(--neutral-600); margin: 0;">
+                    Activité de la caisse, admissions du jour et suivi du recouvrement en temps réel.
+                </p>
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                <a href="{% url 'billing:encaissement' %}" class="btn btn-primary" style="font-size: 0.875rem;" id="btn-quick-caisse">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Nouvel Encaissement
+                </a>
+                <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary" style="font-size: 0.875rem;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                    </svg>
+                    Historique Factures
+                </a>
+            </div>
+        </div>
+
+        <!-- Les 3 Cartes Métriques -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1.25rem;">
+
+            <!-- CARTE 1 : MONTANT ENCAISSÉ AUJOURD'HUI -->
+            <div class="dashboard-kpi-card" style="background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%); border: 1.5px solid var(--primary-200); border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                    <div>
+                        <span style="font-size: 0.775rem; font-weight: 700; text-transform: uppercase; color: var(--primary-800); letter-spacing: 0.04em; display: block;">
+                            Montant Encaissé Aujourd'hui
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--neutral-500);">Recettes nettes perçues</span>
+                    </div>
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: var(--primary-100); color: var(--primary-700); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div style="font-size: 1.95rem; font-weight: 800; color: var(--primary-900); font-family: var(--font-heading); letter-spacing: -0.02em;">
+                    {{ today_collected|floatformat:0 }} <span style="font-size: 1.15rem; font-weight: 700; color: var(--primary-700);">FCFA</span>
+                </div>
+                <div style="font-size: 0.825rem; color: var(--neutral-600); margin-top: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+                    <span><strong>{{ today_invoices_count }}</strong> encaissement{{ today_invoices_count|pluralize:"s" }} validé{{ today_invoices_count|pluralize:"s" }} ce jour</span>
+                </div>
+            </div>
+
+            <!-- CARTE 2 : NOMBRE DE PATIENTS ENREGISTRÉS AUJOURD'HUI -->
+            <div class="dashboard-kpi-card" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border: 1.5px solid #bbf7d0; border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                    <div>
+                        <span style="font-size: 0.775rem; font-weight: 700; text-transform: uppercase; color: #166534; letter-spacing: 0.04em; display: block;">
+                            Patients Enregistrés Aujourd'hui
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--neutral-500);">Nouveaux dossiers créés</span>
+                    </div>
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                            <line x1="23" y1="11" x2="17" y2="11"></line>
+                        </svg>
+                    </div>
+                </div>
+                <div style="font-size: 1.95rem; font-weight: 800; color: #14532d; font-family: var(--font-heading); letter-spacing: -0.02em;">
+                    {{ today_patients_count }} <span style="font-size: 1.15rem; font-weight: 600; color: #15803d;">patient{{ today_patients_count|pluralize:"s" }}</span>
+                </div>
+                <div style="font-size: 0.825rem; color: var(--neutral-600); margin-top: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e;"></span>
+                    <span>Identifiant IPP permanent attribué</span>
+                </div>
+            </div>
+
+            <!-- CARTE 3 : RESTE DES FACTURES NON SOLDÉES (AVEC SURVOL ET LISTE DÉROULANTE) -->
+            <div class="dashboard-kpi-card unpaid-hover-trigger" id="unpaid-invoices-card" tabindex="0" style="background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%); border: 1.5px solid #fde68a; border-radius: var(--radius-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); cursor: pointer;" title="Survolez ou cliquez pour afficher la liste des factures non soldées">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                    <div>
+                        <span style="font-size: 0.775rem; font-weight: 700; text-transform: uppercase; color: #92400e; letter-spacing: 0.04em; display: block;">
+                            Factures Non Soldées (Reste Dû)
+                        </span>
+                        <span style="font-size: 0.75rem; color: #b45309; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">
+                            <span>👁️ Survolez pour voir la liste</span>
+                        </span>
+                    </div>
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                    </div>
+                </div>
+                <div style="font-size: 1.95rem; font-weight: 800; color: #b45309; font-family: var(--font-heading); letter-spacing: -0.02em;">
+                    {{ total_unpaid_remaining|floatformat:0 }} <span style="font-size: 1.15rem; font-weight: 700; color: #d97706;">FCFA</span>
+                </div>
+                <div style="font-size: 0.825rem; color: #92400e; margin-top: 0.65rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span><strong>{{ unpaid_invoices_count }}</strong> facture{{ unpaid_invoices_count|pluralize:"s" }} avec reliquat</span>
+                    <span style="font-size: 0.75rem; background: #fde68a; color: #78350f; padding: 0.15rem 0.55rem; border-radius: var(--radius-full); font-weight: 700;">
+                        {{ unpaid_invoices_count }} à solder 👁️
+                    </span>
+                </div>
+
+                <!-- POPOVER AU SURVOL / CLIC : LISTE DES FACTURES NON SOLDÉES -->
+                <div class="unpaid-popover" id="unpaid-popover">
+                    <div style="padding: 0.85rem 1rem; background: var(--neutral-900); color: #ffffff; display: flex; justify-content: space-between; align-items: center; border-top-left-radius: var(--radius-md); border-top-right-radius: var(--radius-md);">
+                        <div>
+                            <strong style="font-size: 0.875rem; display: block;">Factures non soldées</strong>
+                            <span style="font-size: 0.725rem; color: var(--neutral-400);">{{ unpaid_invoices_count }} dossier{{ unpaid_invoices_count|pluralize:"s" }} avec solde restant</span>
+                        </div>
+                        <span style="font-size: 0.95rem; font-weight: 800; color: #fbbf24;">
+                            {{ total_unpaid_remaining|floatformat:0 }} FCFA
+                        </span>
+                    </div>
+
+                    <div style="max-height: 290px; overflow-y: auto; padding: 0.4rem;">
+                        {% if unpaid_invoices %}
+                            {% for inv in unpaid_invoices %}
+                            <a href="{% url 'billing:invoice_pay' inv.pk %}" style="display: block; padding: 0.75rem; border-radius: var(--radius-sm); border-bottom: 1px solid var(--neutral-100); text-decoration: none; color: inherit;" class="unpaid-item-row" title="Cliquer pour enregistrer un versement ou solder">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.25rem;">
+                                    <div>
+                                        <strong style="color: var(--neutral-900); font-size: 0.875rem; display: block;">{{ inv.patient.full_name }}</strong>
+                                        <div style="font-size: 0.75rem; color: var(--neutral-500); font-family: monospace;">{{ inv.patient.patient_number }} • {{ inv.invoice_number }}</div>
+                                    </div>
+                                    <div style="text-align: right; white-space: nowrap;">
+                                        <div style="font-size: 0.95rem; font-weight: 900; color: #dc2626;">
+                                            {{ inv.amount_remaining|floatformat:0 }} FCFA
+                                        </div>
+                                        <span style="font-size: 0.7rem; color: var(--neutral-500); font-weight: 600;">reste dû</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--neutral-500); margin-top: 0.35rem;">
+                                    <span>{{ inv.specialty.name }} • {{ inv.created_at|date:"d/m/Y H:i" }}</span>
+                                    <span style="background: #f59e0b; color: #ffffff; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.725rem; font-weight: 700;">
+                                        💳 Solder / Verser →
+                                    </span>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        {% else %}
+                            <div style="padding: 1.5rem; text-align: center; color: var(--success-text);">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.35rem;">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                                <div style="font-weight: 700; font-size: 0.875rem;">Toutes les factures sont soldées !</div>
+                                <div style="font-size: 0.75rem; color: var(--neutral-500); margin-top: 0.2rem;">Aucun reliquat de paiement en attente.</div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div style="padding: 0.65rem 1rem; background: var(--neutral-50); border-top: 1px solid var(--neutral-200); text-align: center; border-bottom-left-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md);">
+                        <a href="{% url 'billing:invoice_list' %}" style="font-size: 0.775rem; font-weight: 700; color: var(--primary-700); text-decoration: none;">
+                            Ouvrir tout l'historique des factures →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Actions Rapides Selon le Rôle -->
     <div class="role-actions-container">
         <h2 class="section-heading">
@@ -162,4 +342,23 @@
     </div>
 
 </div>
+
+<script>
+    // Support tactile / clic pour la carte des factures non soldées
+    const unpaidCard = document.getElementById('unpaid-invoices-card');
+    if (unpaidCard) {
+        unpaidCard.addEventListener('click', function(e) {
+            // Si on clique sur un lien vers une facture, laisser la redirection se produire
+            if (e.target.closest('a')) return;
+            this.classList.toggle('is-active');
+        });
+
+        // Fermeture automatique au clic en dehors
+        document.addEventListener('click', function(e) {
+            if (unpaidCard && !unpaidCard.contains(e.target)) {
+                unpaidCard.classList.remove('is-active');
+            }
+        });
+    }
+</script>
 {% endblock %}

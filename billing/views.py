@@ -10,8 +10,8 @@ from django.utils.translation import gettext_lazy as _
 from django.views import View
 from django.views.generic import DetailView, ListView
 
-from .forms import EncaissementForm
-from .models import Invoice, Patient, Specialty
+from .forms import EncaissementForm, InvoicePaymentForm
+from .models import Invoice, InvoicePayment, Patient, Specialty
 
 
 class PatientSearchView(LoginRequiredMixin, View):
@@ -149,11 +149,16 @@ class InvoiceDetailView(LoginRequiredMixin, DetailView):
     template_name = "billing/invoice_detail.html"
     context_object_name = "invoice"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["payments"] = self.object.payments.select_related("created_by").order_by("created_at")
+        return context
+
 
 class InvoiceListView(LoginRequiredMixin, ListView):
     """
     Historique des encaissements et factures de la clinique.
-    Permet de réimprimer n'importe quel reçu émis.
+    Permet de réimprimer n'importe quel reçu émis et de filtrer par statut de paiement.
     """
     model = Invoice
     template_name = "billing/invoice_list.html"
@@ -162,6 +167,12 @@ class InvoiceListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         qs = Invoice.objects.select_related("patient", "specialty", "created_by").order_by("-created_at")
+        status_filter = self.request.GET.get("status", "").strip()
+        if status_filter == "unpaid":
+            qs = qs.filter(amount_remaining__gt=0)
+        elif status_filter == "paid":
+            qs = qs.filter(amount_remaining=0)
+
         search = self.request.GET.get("q", "").strip()
         if search:
             qs = qs.filter(
@@ -178,4 +189,93 @@ class InvoiceListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["search_query"] = self.request.GET.get("q", "").strip()
+        context["current_status"] = self.request.GET.get("status", "").strip()
+        context["total_count"] = Invoice.objects.count()
+        context["unpaid_count"] = Invoice.objects.filter(amount_remaining__gt=0).count()
+        context["paid_count"] = Invoice.objects.filter(amount_remaining=0).count()
         return context
+
+
+class InvoicePaymentCreateView(LoginRequiredMixin, View):
+    """
+    Permet à la secrétaire / caisse d'enregistrer un versement ou un solde
+    sur une facture comportant un reliquat impayé.
+    """
+    template_name = "billing/payment_form.html"
+
+    def get(self, request, pk):
+        invoice = get_object_or_404(
+            Invoice.objects.select_related("patient", "specialty"), pk=pk
+        )
+        if invoice.amount_remaining <= 0:
+            messages.info(request, _("Cette facture est déjà intégralement soldée."))
+            return redirect("billing:invoice_detail", pk=invoice.pk)
+
+        form = InvoicePaymentForm(invoice=invoice)
+        context = {
+            "invoice": invoice,
+            "form": form,
+            "previous_payments": invoice.payments.select_related("created_by").order_by("created_at"),
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, pk):
+        with transaction.atomic():
+            invoice = get_object_or_404(
+                Invoice.objects.select_for_update().select_related("patient", "specialty"), pk=pk
+            )
+            if invoice.amount_remaining <= 0:
+                messages.info(request, _("Cette facture est déjà intégralement soldée."))
+                return redirect("billing:invoice_detail", pk=invoice.pk)
+
+            form = InvoicePaymentForm(request.POST, invoice=invoice)
+            if form.is_valid():
+                amount_paid = form.cleaned_data["amount_paid"]
+                amount_received = form.cleaned_data.get("amount_received") or amount_paid
+                amount_change = form.cleaned_data.get("amount_change", 0)
+                payment_method = form.cleaned_data["payment_method"]
+                note = form.cleaned_data.get("note", "").strip()
+
+                payment = invoice.add_payment(
+                    amount_paid=amount_paid,
+                    amount_received=amount_received,
+                    amount_change=amount_change,
+                    payment_method=payment_method,
+                    note=note,
+                    created_by=request.user,
+                )
+
+                if invoice.amount_remaining == 0:
+                    msg = (
+                        f"Facture {invoice.invoice_number} intégralement soldée ! "
+                        f"Versement de {int(amount_paid):,} FCFA enregistré (Reçu {payment.payment_number})."
+                    ).replace(",", " ")
+                else:
+                    msg = (
+                        f"Versement de {int(amount_paid):,} FCFA enregistré avec succès ! "
+                        f"Nouveau reste à payer : {int(invoice.amount_remaining):,} FCFA (Reçu {payment.payment_number})."
+                    ).replace(",", " ")
+
+                messages.success(request, _(msg))
+                return redirect("billing:payment_receipt", pk=payment.pk)
+
+        context = {
+            "invoice": invoice,
+            "form": form,
+            "previous_payments": invoice.payments.select_related("created_by").order_by("created_at"),
+        }
+        return render(request, self.template_name, context)
+
+
+class PaymentReceiptView(LoginRequiredMixin, DetailView):
+    """
+    Affiche le reçu officiel d'un versement individuel prêt pour l'impression.
+    """
+    model = InvoicePayment
+    template_name = "billing/payment_receipt.html"
+    context_object_name = "payment"
+
+    def get_queryset(self):
+        return InvoicePayment.objects.select_related(
+            "invoice", "invoice__patient", "invoice__specialty", "created_by"
+        )

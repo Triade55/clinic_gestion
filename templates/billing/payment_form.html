@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Encaisser un Versement — Facture {{ invoice.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="main-content">
+
+    <!-- En-tête de navigation -->
+    <div class="page-header-flex" style="margin-bottom: 1.5rem;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+                <a href="{% url 'billing:invoice_detail' invoice.pk %}" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.825rem;">
+                    ← Revenir à la Facture
+                </a>
+                <span style="font-size: 0.85rem; color: var(--neutral-400);">/</span>
+                <span style="font-size: 0.85rem; color: var(--neutral-600); font-weight: 600;">Règlement & Solde</span>
+            </div>
+            <h1 style="font-size: 1.75rem; color: var(--neutral-900); letter-spacing: -0.02em;">
+                Encaisser un Versement
+            </h1>
+            <p style="color: var(--neutral-600); font-size: 0.925rem;">
+                Régularisation du solde pour le patient <strong>{{ invoice.patient.full_name }}</strong>.
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary" style="font-size: 0.875rem;">
+                Tableau de Bord
+            </a>
+        </div>
+    </div>
+
+    <!-- Récapitulatif Facture & Patient Débiteur -->
+    <div style="background: #ffffff; border-radius: var(--radius-lg); border: 1.5px solid var(--primary-200); padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem; border-bottom: 1px solid var(--neutral-200); padding-bottom: 1.25rem;">
+            <div>
+                <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; color: var(--primary-700);">
+                    Dossier Patient (IPP Permanent)
+                </span>
+                <div style="font-size: 1.35rem; font-weight: 900; color: var(--neutral-900); font-family: monospace; margin-top: 0.2rem;">
+                    {{ invoice.patient.patient_number }}
+                </div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: var(--neutral-800); margin-top: 0.15rem;">
+                    {{ invoice.patient.full_name }}
+                </div>
+                {% if invoice.patient.phone_number %}
+                <div style="font-size: 0.85rem; color: var(--neutral-600); margin-top: 0.25rem;">
+                    📞 {{ invoice.patient.phone_number }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div style="text-align: right;">
+                <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--neutral-500);">
+                    Facture Rattachée
+                </span>
+                <div style="font-size: 1.15rem; font-weight: 800; color: var(--primary-900); margin-top: 0.2rem;">
+                    {{ invoice.invoice_number }}
+                </div>
+                <div style="font-size: 0.85rem; color: var(--neutral-600); margin-top: 0.2rem;">
+                    {{ invoice.specialty.name }} • Émise le {{ invoice.created_at|date:"d/m/Y à H:i" }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Les 3 chiffres financiers -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+            <div style="padding: 1rem; background: var(--neutral-50); border-radius: var(--radius-md); border: 1px solid var(--neutral-200);">
+                <span style="font-size: 0.75rem; font-weight: 700; color: var(--neutral-500); text-transform: uppercase;">Tarif Prestation</span>
+                <div style="font-size: 1.35rem; font-weight: 800; color: var(--neutral-800); margin-top: 0.25rem;">
+                    {{ invoice.consultation_fee|floatformat:0 }} <span style="font-size: 0.9rem; font-weight: 600;">FCFA</span>
+                </div>
+            </div>
+
+            <div style="padding: 1rem; background: #f0fdf4; border-radius: var(--radius-md); border: 1px solid #bbf7d0;">
+                <span style="font-size: 0.75rem; font-weight: 700; color: #166534; text-transform: uppercase;">Déjà Réglé à ce jour</span>
+                <div style="font-size: 1.35rem; font-weight: 800; color: #15803d; margin-top: 0.25rem;">
+                    {{ invoice.amount_received|floatformat:0 }} <span style="font-size: 0.9rem; font-weight: 600;">FCFA</span>
+                </div>
+            </div>
+
+            <div style="padding: 1rem; background: #fffbeb; border-radius: var(--radius-md); border: 2px solid #f59e0b;">
+                <span style="font-size: 0.75rem; font-weight: 800; color: #92400e; text-transform: uppercase;">Reste à Payer Actuel</span>
+                <div style="font-size: 1.5rem; font-weight: 900; color: #b45309; margin-top: 0.25rem;" id="current-remaining-val" data-val="{{ invoice.amount_remaining|floatformat:0 }}">
+                    {{ invoice.amount_remaining|floatformat:0 }} <span style="font-size: 0.95rem; font-weight: 700;">FCFA</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grille Formulaire + Simulateur en Direct -->
+    <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 2rem; align-items: flex-start;" class="payment-grid-layout">
+
+        <!-- Formulaire de Saisie -->
+        <div class="card" style="padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);">
+            <h2 style="font-size: 1.3rem; font-weight: 800; color: var(--neutral-900); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.6rem;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="color: var(--primary-600);">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>
+                Enregistrer un Versement
+            </h2>
+            <p style="font-size: 0.875rem; color: var(--neutral-600); margin-bottom: 1.5rem;">
+                Choisissez de solder la facture en totalité ou d'enregistrer un paiement partiel (acompte).
+            </p>
+
+            <!-- Boutons de Raccourcis Rapides -->
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--neutral-600); text-transform: uppercase; margin-bottom: 0.5rem; display: block;">
+                    Raccourcis de paiement rapide :
+                </label>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-primary quick-amount-btn" data-amount="{{ invoice.amount_remaining|floatformat:0 }}" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+                        ★ Tout Solder ({{ invoice.amount_remaining|floatformat:0 }} FCFA)
+                    </button>
+                    {% if invoice.amount_remaining > 2000 %}
+                    <button type="button" class="btn btn-secondary quick-amount-btn" data-amount="2000" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">
+                        2 000 FCFA
+                    </button>
+                    {% endif %}
+                    {% if invoice.amount_remaining > 5000 %}
+                    <button type="button" class="btn btn-secondary quick-amount-btn" data-amount="5000" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">
+                        5 000 FCFA
+                    </button>
+                    {% endif %}
+                    {% if invoice.amount_remaining > 10000 %}
+                    <button type="button" class="btn btn-secondary quick-amount-btn" data-amount="10000" style="font-size: 0.85rem; padding: 0.4rem 0.75rem;">
+                        10 000 FCFA
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="post" id="payment-form" novalidate>
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div style="padding: 0.85rem 1rem; background: var(--error-bg); border: 1px solid var(--error-border); border-radius: var(--radius-md); color: var(--error-text); margin-bottom: 1.25rem; font-size: 0.875rem;">
+                    {{ form.non_field_errors }}
+                </div>
+                {% endif %}
+
+                <!-- Champ 1 : Montant du versement (imputé sur la dette) -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="{{ form.amount_paid.id_for_label }}" style="font-weight: 700; color: var(--neutral-900); display: block; margin-bottom: 0.35rem;">
+                        {{ form.amount_paid.label }} <span style="color: #dc2626;">*</span>
+                    </label>
+                    <div style="position: relative;">
+                        {{ form.amount_paid }}
+                        <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--neutral-500); pointer-events: none;">
+                            FCFA
+                        </span>
+                    </div>
+                    {% if form.amount_paid.help_text %}
+                    <small style="color: var(--neutral-500); display: block; margin-top: 0.3rem;">{{ form.amount_paid.help_text }}</small>
+                    {% endif %}
+                    {% if form.amount_paid.errors %}
+                    <div style="color: #dc2626; font-size: 0.825rem; margin-top: 0.25rem; font-weight: 600;">
+                        {{ form.amount_paid.errors.0 }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Champ 2 : Espèces remises (pour calcul de monnaie) -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="{{ form.amount_received.id_for_label }}" style="font-weight: 700; color: var(--neutral-900); display: block; margin-bottom: 0.35rem;">
+                        {{ form.amount_received.label }}
+                    </label>
+                    <div style="position: relative;">
+                        {{ form.amount_received }}
+                        <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--neutral-500); pointer-events: none;">
+                            FCFA
+                        </span>
+                    </div>
+                    {% if form.amount_received.help_text %}
+                    <small style="color: var(--neutral-500); display: block; margin-top: 0.3rem;">{{ form.amount_received.help_text }}</small>
+                    {% endif %}
+                    {% if form.amount_received.errors %}
+                    <div style="color: #dc2626; font-size: 0.825rem; margin-top: 0.25rem; font-weight: 600;">
+                        {{ form.amount_received.errors.0 }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Champ 3 : Mode de paiement -->
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="{{ form.payment_method.id_for_label }}" style="font-weight: 700; color: var(--neutral-900); display: block; margin-bottom: 0.35rem;">
+                        {{ form.payment_method.label }} <span style="color: #dc2626;">*</span>
+                    </label>
+                    {{ form.payment_method }}
+                    {% if form.payment_method.errors %}
+                    <div style="color: #dc2626; font-size: 0.825rem; margin-top: 0.25rem; font-weight: 600;">
+                        {{ form.payment_method.errors.0 }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Champ 4 : Note / Observation -->
+                <div class="form-group" style="margin-bottom: 1.75rem;">
+                    <label for="{{ form.note.id_for_label }}" style="font-weight: 700; color: var(--neutral-900); display: block; margin-bottom: 0.35rem;">
+                        {{ form.note.label }}
+                    </label>
+                    {{ form.note }}
+                    {% if form.note.errors %}
+                    <div style="color: #dc2626; font-size: 0.825rem; margin-top: 0.25rem; font-weight: 600;">
+                        {{ form.note.errors.0 }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary" id="btn-submit-payment" style="flex: 1; min-width: 200px; padding: 0.85rem 1.5rem; font-size: 1rem; font-weight: 700; box-shadow: var(--shadow-md);">
+                        💾 Valider & Générer le Reçu
+                    </button>
+                    <a href="{% url 'billing:invoice_detail' invoice.pk %}" class="btn btn-secondary">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Panneau Simulateur en Temps Réel -->
+        <div>
+            <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-lg); position: sticky; top: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 0.75rem;">
+                    <span style="font-size: 1.25rem;">⚡</span>
+                    <div>
+                        <h3 style="font-size: 1.1rem; font-weight: 800; color: #ffffff; margin: 0;">Simulation Immédiate</h3>
+                        <span style="font-size: 0.75rem; color: #94a3b8;">Mise à jour en temps réel lors de votre saisie</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #cbd5e1;">
+                        <span>Reste à payer actuel :</span>
+                        <strong style="color: #ffffff; font-size: 1.05rem;" id="sim-current-remaining">{{ invoice.amount_remaining|floatformat:0 }} FCFA</strong>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; color: #cbd5e1;">
+                        <span>Montant imputé (versement) :</span>
+                        <strong style="color: #38bdf8; font-size: 1.15rem;" id="sim-paid-amount">- 0 FCFA</strong>
+                    </div>
+
+                    <hr style="border: none; border-top: 1px dashed rgba(255,255,255,0.2); margin: 0.25rem 0;">
+
+                    <!-- Nouveau reste à payer après ce paiement -->
+                    <div style="padding: 1rem; border-radius: var(--radius-md); background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.15);" id="sim-box-remaining">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 0.25rem;">
+                            Nouveau Reste à Payer après ce Versement
+                        </span>
+                        <div style="font-size: 1.85rem; font-weight: 900; letter-spacing: -0.02em; color: #f59e0b;" id="sim-new-remaining">
+                            {{ invoice.amount_remaining|floatformat:0 }} FCFA
+                        </div>
+                        <div style="font-size: 0.8rem; margin-top: 0.35rem;" id="sim-status-badge">
+                            <span style="color: #f59e0b;">● Paiement partiel / solde restant</span>
+                        </div>
+                    </div>
+
+                    <!-- Monnaie à rendre -->
+                    <div style="padding: 0.85rem 1rem; border-radius: var(--radius-md); background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); display: none;" id="sim-box-change">
+                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #6ee7b7; display: block;">
+                            Monnaie à rendre au patient :
+                        </span>
+                        <div style="font-size: 1.5rem; font-weight: 900; color: #34d399; margin-top: 0.2rem;" id="sim-change-amount">
+                            0 FCFA
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.775rem; color: #94a3b8;">
+                    💡 En validant, un reçu officiel imprimable avec identifiant unique <code>PAY-...</code> sera immédiatement émis pour le patient.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Historique des versements précédents sur cette facture s'il y en a -->
+    {% if previous_payments %}
+    <div style="margin-top: 3rem; background: #ffffff; border-radius: var(--radius-lg); border: 1px solid var(--neutral-200); padding: 1.75rem; box-shadow: var(--shadow-sm);">
+        <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--neutral-900); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📋</span> Versements Déjà Enregistrés sur cette Facture ({{ previous_payments|length }})
+        </h3>
+        <div class="table-responsive">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: var(--neutral-50); border-bottom: 1px solid var(--neutral-200); text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500);">
+                        <th style="padding: 0.75rem 1rem;">N° Reçu</th>
+                        <th style="padding: 0.75rem 1rem;">Date</th>
+                        <th style="padding: 0.75rem 1rem; text-align: right;">Montant Versé</th>
+                        <th style="padding: 0.75rem 1rem;">Mode</th>
+                        <th style="padding: 0.75rem 1rem;">Encaissé Par</th>
+                        <th style="padding: 0.75rem 1rem; text-align: center;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in previous_payments %}
+                    <tr style="border-bottom: 1px solid var(--neutral-150); font-size: 0.875rem;">
+                        <td style="padding: 0.75rem 1rem; font-weight: 700; color: var(--primary-700); font-family: monospace;">
+                            {{ p.payment_number }}
+                        </td>
+                        <td style="padding: 0.75rem 1rem; color: var(--neutral-600);">
+                            {{ p.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td style="padding: 0.75rem 1rem; text-align: right; font-weight: 800; color: var(--success-text);">
+                            {{ p.amount_paid|floatformat:0 }} FCFA
+                        </td>
+                        <td style="padding: 0.75rem 1rem; color: var(--neutral-700);">
+                            {{ p.get_payment_method_display }}
+                        </td>
+                        <td style="padding: 0.75rem 1rem; color: var(--neutral-600);">
+                            {{ p.created_by.get_full_name|default:p.created_by.email }}
+                        </td>
+                        <td style="padding: 0.75rem 1rem; text-align: center;">
+                            <a href="{% url 'billing:payment_receipt' p.pk %}" class="btn btn-secondary" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">
+                                Voir Reçu 🖨️
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Script interactif de calcul en temps réel et raccourcis rapides -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const remainingInit = parseFloat(document.getElementById("current-remaining-val").dataset.val) || 0;
+        const paidInput = document.getElementById("id_amount_paid");
+        const recInput = document.getElementById("id_amount_received");
+        const quickBtns = document.querySelectorAll(".quick-amount-btn");
+
+        const simPaid = document.getElementById("sim-paid-amount");
+        const simRemaining = document.getElementById("sim-new-remaining");
+        const simBadge = document.getElementById("sim-status-badge");
+        const simBoxRemaining = document.getElementById("sim-box-remaining");
+        const simBoxChange = document.getElementById("sim-box-change");
+        const simChange = document.getElementById("sim-change-amount");
+
+        function formatMoney(num) {
+            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+
+        function updateSimulation() {
+            let amountPaid = parseFloat(paidInput.value) || 0;
+            let amountRec = parseFloat(recInput.value) || 0;
+
+            if (amountPaid > remainingInit) {
+                amountPaid = remainingInit;
+            }
+
+            simPaid.textContent = "- " + formatMoney(amountPaid) + " FCFA";
+
+            const newRemaining = Math.max(0, remainingInit - amountPaid);
+            simRemaining.textContent = formatMoney(newRemaining) + " FCFA";
+
+            if (newRemaining === 0 && amountPaid > 0) {
+                simRemaining.style.color = "#34d399";
+                simBoxRemaining.style.borderColor = "#10b981";
+                simBoxRemaining.style.background = "rgba(16, 185, 129, 0.15)";
+                simBadge.innerHTML = '<span style="color: #34d399; font-weight: 800;">🎉 FACTURE INTÉGRALEMENT SOLDÉE !</span>';
+            } else {
+                simRemaining.style.color = "#f59e0b";
+                simBoxRemaining.style.borderColor = "rgba(255,255,255,0.15)";
+                simBoxRemaining.style.background = "rgba(255,255,255,0.06)";
+                simBadge.innerHTML = '<span style="color: #f59e0b;">● Reliquat restant après ce paiement</span>';
+            }
+
+            // Calcul monnaie si remise > versement
+            if (amountRec > amountPaid && amountPaid > 0) {
+                const change = amountRec - amountPaid;
+                simChange.textContent = formatMoney(change) + " FCFA";
+                simBoxChange.style.display = "block";
+            } else {
+                simBoxChange.style.display = "none";
+            }
+        }
+
+        quickBtns.forEach(btn => {
+            btn.addEventListener("click", function() {
+                const val = this.dataset.amount;
+                paidInput.value = val;
+                recInput.value = val;
+                updateSimulation();
+            });
+        });
+
+        paidInput.addEventListener("input", function() {
+            if (!recInput.value || parseFloat(recInput.value) < parseFloat(paidInput.value)) {
+                recInput.value = paidInput.value;
+            }
+            updateSimulation();
+        });
+
+        recInput.addEventListener("input", updateSimulation);
+
+        // Init simulation au chargement
+        updateSimulation();
+    });
+</script>
+
+<style>
+    @media (max-width: 880px) {
+        .payment-grid-layout {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+{% endblock %}
