@@ -608,25 +608,270 @@ a:hover {
   gap: 1rem;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .clinic-navbar {
-    padding: 0.75rem 1rem;
+/* ==========================================================================
+   Responsive & Adaptive System
+   ========================================================================== */
+
+/* Mobile Nav Toggle & Drawer */
+.mobile-nav-toggle {
+  display: none;
+  background: var(--neutral-100);
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  padding: 0.5rem;
+  color: var(--neutral-800);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.mobile-nav-toggle:hover {
+  background: var(--neutral-200);
+  color: var(--neutral-900);
+}
+
+.mobile-nav-drawer {
+  display: none;
+  background: #ffffff;
+  border-bottom: 2px solid var(--primary-600);
+  box-shadow: var(--shadow-xl);
+  padding: 1.25rem 1rem;
+  position: sticky;
+  top: 61px;
+  z-index: 45;
+  animation: slideDown 0.2s ease-out;
+}
+
+.mobile-nav-drawer.is-open {
+  display: block;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
   }
-  .brand-title {
-    font-size: 1.05rem;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-user-profile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.85rem;
+  border-bottom: 1px solid var(--neutral-200);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobile-nav-links .btn {
+  justify-content: flex-start;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+/* Responsive Table Wrapper */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--neutral-200);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.5rem;
+}
+
+.table-responsive table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+/* Flexible Page Header */
+.page-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Flexible Search Bar */
+.search-form-flex {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* Two-column responsive form rows */
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Patient mode switcher */
+.patient-mode-toggle {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Encaissement layout */
+.encaissement-layout {
+  display: grid;
+  grid-template-columns: 2fr 1.1fr;
+  gap: 1.75rem;
+}
+
+/* Dynamic calculation grid */
+.calc-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Media Query: Breakpoint Tablettes & Nav (<= 860px) */
+@media (max-width: 860px) {
+  .clinic-navbar {
+    padding: 0.75rem 1.25rem;
+  }
+  .nav-desktop-menu {
+    display: none !important;
+  }
+  .mobile-nav-toggle {
+    display: inline-flex;
+  }
+  .encaissement-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* Media Query: Breakpoint Mobile Standard (<= 768px) */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1.25rem 1rem;
   }
   .dashboard-hero {
-    padding: 1.5rem;
+    padding: 1.5rem 1.25rem;
   }
   .hero-title {
     font-size: 1.5rem;
   }
+  .hero-subtitle {
+    font-size: 0.925rem;
+  }
+  .grid-cards {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .role-actions-container {
+    padding: 1.25rem 1rem;
+  }
   .footer-content {
     flex-direction: column;
     text-align: center;
+    gap: 0.5rem;
   }
   .user-identity {
     display: none;
   }
 }
+
+/* Media Query: Petit Écran & Téléphones (<= 640px) */
+@media (max-width: 640px) {
+  .clinic-navbar {
+    padding: 0.65rem 0.85rem;
+  }
+  .brand-logo-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .brand-title {
+    font-size: 1.05rem;
+  }
+  .brand-subtitle {
+    font-size: 0.68rem;
+  }
+  .main-content {
+    padding: 1rem 0.75rem;
+  }
+  .auth-page-container {
+    padding: 1.5rem 0.75rem;
+  }
+  .auth-card {
+    padding: 1.5rem 1.15rem;
+  }
+  .auth-title {
+    font-size: 1.25rem;
+  }
+  .form-row-2col {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .patient-mode-toggle {
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .calc-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    text-align: center;
+  }
+  .calc-summary-grid > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+  }
+  #status-card-container {
+    text-align: center !important;
+    display: block !important;
+  }
+  .page-header-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .page-header-flex > div:last-child {
+    width: 100%;
+  }
+  .page-header-flex > div:last-child > .btn {
+    width: 100%;
+  }
+  .search-form-flex {
+    flex-direction: column;
+  }
+  .search-form-flex .btn {
+    width: 100%;
+  }
+  .invoice-container {
+    padding: 1.25rem 1rem !important;
+  }
+  .invoice-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 1rem;
+  }
+  .invoice-header > div:last-child {
+    text-align: left !important;
+  }
+}
+

@@ -186,3 +186,59 @@ class EncaissementViewTests(TestCase):
         response = self.client.get(reverse("billing:invoice_list"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Historique des Factures")
+
+    def test_patient_search_by_query(self):
+        p1 = Patient.objects.create(
+            patient_number="PAT-2026-0888",
+            first_name="Kadiatou",
+            last_name="Sanogo",
+            phone_number="07 08 09 10 11",
+        )
+        # Création d'une consultation passée
+        Invoice.objects.create(
+            patient=p1,
+            specialty=self.specialty,
+            consultation_fee=7500,
+            amount_received=7500,
+            created_by=self.secretary,
+        )
+
+        # Recherche par IPP
+        res = self.client.get(reverse("billing:patient_search"), {"q": "0888"})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["patient_number"], "PAT-2026-0888")
+        self.assertEqual(data["results"][0]["invoices_count"], 1)
+
+        # Recherche par nom de famille
+        res_name = self.client.get(reverse("billing:patient_search"), {"q": "Sanogo"})
+        self.assertEqual(res_name.status_code, 200)
+        data_name = res_name.json()
+        self.assertEqual(len(data_name["results"]), 1)
+        self.assertEqual(data_name["results"][0]["first_name"], "Kadiatou")
+
+        # Recherche par téléphone
+        res_phone = self.client.get(reverse("billing:patient_search"), {"q": "09 10"})
+        self.assertEqual(res_phone.status_code, 200)
+        data_phone = res_phone.json()
+        self.assertEqual(len(data_phone["results"]), 1)
+
+    def test_patient_search_by_exact_number(self):
+        Patient.objects.create(
+            patient_number="PAT-2026-0999",
+            first_name="Oumar",
+            last_name="Koné",
+            phone_number="01 02 03 04 05",
+        )
+        res = self.client.get(reverse("billing:patient_search"), {"patient_number": "PAT-2026-0999"})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(len(data["results"]), 1)
+        self.assertEqual(data["results"][0]["patient_number"], "PAT-2026-0999")
+
+    def test_patient_search_unauthenticated(self):
+        self.client.logout()
+        res = self.client.get(reverse("billing:patient_search"), {"q": "test"})
+        self.assertEqual(res.status_code, 302)
+

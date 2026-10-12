@@ -2,6 +2,8 @@ import json
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -10,6 +12,49 @@ from django.views.generic import DetailView, ListView
 
 from .forms import EncaissementForm
 from .models import Invoice, Patient, Specialty
+
+
+class PatientSearchView(LoginRequiredMixin, View):
+    """
+    Recherche dynamique de patients en JSON pour l'autocomplétion en direct
+    et la vérification d'identité immédiate lors de la saisie du numéro de patient.
+    Supporte la recherche par numéro IPP, nom, prénom ou téléphone.
+    """
+    def get(self, request):
+        query = request.GET.get("q", "").strip()
+        exact_number = request.GET.get("patient_number", "").strip()
+
+        if exact_number:
+            patients = Patient.objects.filter(patient_number__iexact=exact_number)[:1]
+        elif query:
+            patients = Patient.objects.filter(
+                Q(patient_number__icontains=query)
+                | Q(last_name__icontains=query)
+                | Q(first_name__icontains=query)
+                | Q(phone_number__icontains=query)
+            ).order_by("-created_at")[:10]
+        else:
+            patients = Patient.objects.none()
+
+        results = []
+        for p in patients:
+            invoices = p.invoices.select_related("specialty").order_by("-created_at")
+            last_invoice = invoices.first()
+            results.append({
+                "id": p.id,
+                "patient_number": p.patient_number,
+                "first_name": p.first_name,
+                "last_name": p.last_name.upper(),
+                "full_name": p.full_name,
+                "phone_number": p.phone_number if p.phone_number else "Non renseigné",
+                "created_at": p.created_at.strftime("%d/%m/%Y"),
+                "invoices_count": invoices.count(),
+                "last_visit": last_invoice.created_at.strftime("%d/%m/%Y à %H:%M") if last_invoice else None,
+                "last_specialty": last_invoice.specialty.name if last_invoice else None,
+            })
+
+        return JsonResponse({"results": results})
+
 
 
 class EncaissementCreateView(LoginRequiredMixin, View):

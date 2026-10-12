@@ -4,19 +4,42 @@
 {% block title %}Caisse & Encaissement Consultation{% endblock %}
 
 {% block content %}
+<style>
+    @keyframes search-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .search-spin-icon {
+        animation: search-spin 0.75s linear infinite;
+        transform-origin: center center;
+    }
+    .patient-suggest-item {
+        cursor: pointer;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--neutral-100);
+        transition: background 120ms ease;
+    }
+    .patient-suggest-item:last-child {
+        border-bottom: none;
+    }
+    .patient-suggest-item:hover,
+    .patient-suggest-item.active {
+        background-color: var(--primary-50) !important;
+    }
+</style>
 <div class="main-content">
 
     <!-- En-tête Caisse -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div class="page-header-flex">
         <div>
             <h1 style="font-size: 1.75rem; color: var(--neutral-900); display: flex; align-items: center; gap: 0.65rem;">
-                <span style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: var(--primary-100); color: var(--primary-700);">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px; background: var(--primary-100); color: var(--primary-700); flex-shrink: 0;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                         <rect x="2" y="4" width="20" height="16" rx="2"></rect>
                         <line x1="2" y1="10" x2="22" y2="10"></line>
                     </svg>
                 </span>
-                Accueil & Encaissement Consultation
+                <span>Accueil & Encaissement Consultation</span>
             </h1>
             <p style="color: var(--neutral-600); font-size: 0.925rem; margin-top: 0.25rem;">
                 Enregistrez le patient, encaissez la consultation et imprimez la facture avec son numéro de patient unique.
@@ -35,11 +58,11 @@
         </div>
     </div>
 
-    <!-- Conteneur 2 Colonnes -->
-    <div style="display: grid; grid-template-columns: 2fr 1.1fr; gap: 1.75rem;" class="encaissement-layout">
+    <!-- Conteneur 2 Colonnes Responsive -->
+    <div class="encaissement-layout">
 
         <!-- Colonne Principale : Formulaire de Saisie -->
-        <div class="auth-card" style="max-width: none; padding: 2rem; box-shadow: var(--shadow-md);">
+        <div class="auth-card" style="max-width: none; box-shadow: var(--shadow-md);">
 
             {% if form.non_field_errors %}
             <div class="alert alert-error" style="margin-bottom: 1.5rem;">
@@ -66,7 +89,7 @@
                     </div>
 
                     <!-- Choix Nouveau vs Existant -->
-                    <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem;">
+                    <div class="patient-mode-toggle">
                         <label style="flex: 1; display: flex; align-items: center; gap: 0.65rem; padding: 0.85rem 1rem; border: 2px solid var(--primary-600); background: var(--primary-50); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-size: 0.95rem; color: var(--primary-900);" id="label-mode-new">
                             <input type="radio" name="patient_mode" value="NEW" id="radio-mode-new" {% if form.patient_mode.value != 'EXISTING' %}checked{% endif %}>
                             <span>+ Nouveau Patient</span>
@@ -80,7 +103,7 @@
 
                     <!-- Champs Nouveau Patient -->
                     <div id="section-new-patient">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-row-2col">
                             <div class="form-group">
                                 <label for="{{ form.last_name.id_for_label }}" class="form-label">Nom de famille <span style="color: #dc2626;">*</span></label>
                                 {{ form.last_name }}
@@ -107,15 +130,88 @@
                         </div>
                     </div>
 
-                    <!-- Champ Patient Existant -->
+                    <!-- Champ Patient Existant avec Recherche en Direct & Autocomplétion -->
                     <div id="section-existing-patient" style="display: none;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label for="{{ form.existing_patient_number.id_for_label }}" class="form-label">Numéro Unique de Patient <span style="color: #dc2626;">*</span></label>
-                            {{ form.existing_patient_number }}
-                            <div class="form-help">Saisissez son numéro de dossier délivré sur sa facture (ex: <code>PAT-2026-0001</code>).</div>
+                        <div class="form-group" style="position: relative; margin-bottom: 0.75rem;">
+                            <label for="{{ form.existing_patient_number.id_for_label }}" class="form-label" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                                <span>Numéro Unique de Patient <span style="color: #dc2626;">*</span></span>
+                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--primary-700); background: var(--primary-100); padding: 0.15rem 0.55rem; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    Recherche & Vérification en direct
+                                </span>
+                            </label>
+
+                            <div style="position: relative;">
+                                {{ form.existing_patient_number }}
+                                <div id="patient-search-spinner" style="display: none; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;">
+                                    <svg class="search-spin-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-600)" stroke-width="2.5">
+                                        <circle cx="12" cy="12" r="10" stroke="var(--neutral-300)"></circle>
+                                        <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--primary-600)" stroke-linecap="round"></path>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="form-help" style="margin-top: 0.35rem;">
+                                Saisissez son numéro IPP (ex: <code>PAT-2026-0001</code>) ou son <strong>nom</strong> / <strong>téléphone</strong> pour le retrouver instantanément.
+                            </div>
+
                             {% if form.existing_patient_number.errors %}
                             <ul class="form-errors">{% for err in form.existing_patient_number.errors %}<li>{{ err }}</li>{% endfor %}</ul>
                             {% endif %}
+
+                            <!-- Dropdown de suggestions autocomplétion -->
+                            <div id="patient-autocomplete-dropdown" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #ffffff; border: 1.5px solid var(--neutral-300); border-radius: var(--radius-md); box-shadow: var(--shadow-xl); z-index: 1050; max-height: 290px; overflow-y: auto;">
+                                <!-- Rempli dynamiquement par JS -->
+                            </div>
+                        </div>
+
+                        <!-- CARTE DE CONFIRMATION VISUELLE DU PATIENT TROUVÉ -->
+                        <div id="patient-selected-card" style="display: none; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #86efac; border-radius: var(--radius-md); padding: 1.1rem 1.25rem; margin-top: 0.85rem; box-shadow: var(--shadow-sm); transition: all var(--transition-fast);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                                <div style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); background: #15803d; color: #ffffff; font-size: 0.775rem; font-weight: 700; letter-spacing: 0.03em;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    Patient identifié & vérifié
+                                </div>
+                                <button type="button" id="btn-clear-patient" style="background: transparent; border: none; color: #166534; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-decoration: underline; display: inline-flex; align-items: center; gap: 0.3rem;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                                    Changer de patient
+                                </button>
+                            </div>
+
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #14532d; margin-bottom: 0.65rem;" id="card-patient-name">
+                                <!-- Nom Prénom -->
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.65rem; font-size: 0.825rem; background: rgba(255, 255, 255, 0.85); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid #bbf7d0;">
+                                <div>
+                                    <span style="color: var(--neutral-500); display: block; font-size: 0.725rem; font-weight: 600; text-transform: uppercase;">Numéro IPP</span>
+                                    <strong style="font-family: monospace; font-size: 0.95rem; color: var(--primary-800);" id="card-patient-number">PAT-XXXX-XXXX</strong>
+                                </div>
+                                <div>
+                                    <span style="color: var(--neutral-500); display: block; font-size: 0.725rem; font-weight: 600; text-transform: uppercase;">Téléphone</span>
+                                    <span style="color: var(--neutral-800); font-weight: 600;" id="card-patient-phone">—</span>
+                                </div>
+                                <div>
+                                    <span style="color: var(--neutral-500); display: block; font-size: 0.725rem; font-weight: 600; text-transform: uppercase;">Historique</span>
+                                    <span style="color: var(--neutral-800); font-weight: 600;" id="card-patient-visits">0 consultation</span>
+                                </div>
+                                <div>
+                                    <span style="color: var(--neutral-500); display: block; font-size: 0.725rem; font-weight: 600; text-transform: uppercase;">Dernier passage</span>
+                                    <span style="color: var(--neutral-800); font-weight: 600;" id="card-patient-last-visit">Aucun</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Message d'alerte si patient non trouvé -->
+                        <div id="patient-not-found-msg" style="display: none; background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning-text); padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.85rem; margin-top: 0.75rem; align-items: center; gap: 0.5rem;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Aucun dossier correspondant à cette recherche. Vérifiez la saisie ou enregistrez ce patient en « <strong>Nouveau Patient</strong> ».</span>
                         </div>
                     </div>
                 </div>
@@ -162,7 +258,7 @@
 
                 <!-- BOX DYNAMIQUE DE CALCUL EN DIRECT (MONNAIE RENDUE) -->
                 <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 2px dashed var(--neutral-300); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-bottom: 2rem;" id="calculation-summary-box">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 1rem; align-items: center;">
+                    <div class="calc-summary-grid">
                         <div>
                             <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--neutral-500); font-weight: 700;">Tarif Consultation</div>
                             <div style="font-size: 1.25rem; font-weight: 800; color: var(--neutral-900); margin-top: 0.2rem;" id="display-fee">
@@ -365,6 +461,238 @@
             updateCalculations();
         });
     });
+
+    // ==========================================
+    // RECHERCHE EN DIRECT & AUTOCOMPLÉTION PATIENT
+    // ==========================================
+    const inputPatientNumber = document.getElementById('id_existing_patient_number');
+    const searchSpinner = document.getElementById('patient-search-spinner');
+    const dropdown = document.getElementById('patient-autocomplete-dropdown');
+    const patientCard = document.getElementById('patient-selected-card');
+    const cardName = document.getElementById('card-patient-name');
+    const cardNumber = document.getElementById('card-patient-number');
+    const cardPhone = document.getElementById('card-patient-phone');
+    const cardVisits = document.getElementById('card-patient-visits');
+    const cardLastVisit = document.getElementById('card-patient-last-visit');
+    const notFoundMsg = document.getElementById('patient-not-found-msg');
+    const btnClearPatient = document.getElementById('btn-clear-patient');
+    const searchApiUrl = "{% url 'billing:patient_search' %}";
+
+    let debounceTimer = null;
+    let currentResults = [];
+    let activeSuggestionIndex = -1;
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function showPatientCard(patient) {
+        if (!patient || !patientCard) return;
+        cardName.textContent = patient.full_name;
+        cardNumber.textContent = patient.patient_number;
+        cardPhone.textContent = patient.phone_number;
+        cardVisits.textContent = patient.invoices_count + (patient.invoices_count > 1 ? ' consultations' : ' consultation');
+        cardLastVisit.textContent = patient.last_visit ? (patient.last_visit + (patient.last_specialty ? ' (' + patient.last_specialty + ')' : '')) : 'Première consultation';
+        patientCard.style.display = 'block';
+        if (notFoundMsg) notFoundMsg.style.display = 'none';
+    }
+
+    function hidePatientCard() {
+        if (patientCard) patientCard.style.display = 'none';
+    }
+
+    function hideDropdown() {
+        if (dropdown) {
+            dropdown.style.display = 'none';
+            dropdown.innerHTML = '';
+        }
+        activeSuggestionIndex = -1;
+    }
+
+    function selectPatient(patient) {
+        if (!patient || !inputPatientNumber) return;
+        inputPatientNumber.value = patient.patient_number;
+        showPatientCard(patient);
+        hideDropdown();
+    }
+
+    function renderSuggestions(results, query) {
+        currentResults = results;
+        activeSuggestionIndex = -1;
+        if (!dropdown) return;
+
+        if (results.length === 0) {
+            dropdown.innerHTML = `
+                <div style="padding: 1.1rem; text-align: center; color: var(--neutral-600); font-size: 0.85rem;">
+                    <div style="font-weight: 700; color: var(--neutral-800); margin-bottom: 0.25rem;">Aucun dossier trouvé pour « <strong>${escapeHtml(query)}</strong> »</div>
+                    <div style="font-size: 0.775rem; color: var(--neutral-500);">Vérifiez l'orthographe ou enregistrez ce patient avec l'option « <strong>+ Nouveau Patient</strong> ».</div>
+                </div>
+            `;
+            dropdown.style.display = 'block';
+            return;
+        }
+
+        const headerHtml = `
+            <div style="padding: 0.45rem 0.85rem; background: var(--neutral-50); border-bottom: 1px solid var(--neutral-200); font-size: 0.725rem; font-weight: 700; color: var(--neutral-600); text-transform: uppercase; letter-spacing: 0.04em;">
+                ${results.length} dossier${results.length > 1 ? 's' : ''} trouvé${results.length > 1 ? 's' : ''} — Cliquez pour sélectionner
+            </div>
+        `;
+
+        const itemsHtml = results.map((p, idx) => `
+            <div class="patient-suggest-item" data-index="${idx}">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; flex-wrap: wrap;">
+                            <span style="font-family: monospace; font-weight: 800; font-size: 0.825rem; background: var(--primary-100); color: var(--primary-800); padding: 0.15rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--primary-200);">${escapeHtml(p.patient_number)}</span>
+                            <strong style="color: var(--neutral-900); font-size: 0.95rem;">${escapeHtml(p.full_name)}</strong>
+                        </div>
+                        <div style="font-size: 0.775rem; color: var(--neutral-600); display: flex; gap: 0.85rem; flex-wrap: wrap; margin-top: 0.2rem;">
+                            <span>📞 <strong>${escapeHtml(p.phone_number)}</strong></span>
+                            <span>📋 ${p.invoices_count} consultation${p.invoices_count > 1 ? 's' : ''}</span>
+                            ${p.last_specialty ? `<span style="color: var(--primary-700);">• Dernier service : ${escapeHtml(p.last_specialty)}</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="color: var(--primary-700); font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; background: var(--primary-50); padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--primary-200); white-space: nowrap;">
+                        Choisir
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        dropdown.innerHTML = headerHtml + itemsHtml;
+        dropdown.style.display = 'block';
+
+        dropdown.querySelectorAll('.patient-suggest-item').forEach(el => {
+            el.addEventListener('click', function() {
+                const idx = parseInt(this.getAttribute('data-index'), 10);
+                selectPatient(currentResults[idx]);
+            });
+        });
+    }
+
+    function fetchPatientSuggestions(query, exactOnly = false) {
+        if (!query) return;
+        const url = exactOnly
+            ? `${searchApiUrl}?patient_number=${encodeURIComponent(query)}`
+            : `${searchApiUrl}?q=${encodeURIComponent(query)}`;
+
+        if (searchSpinner) searchSpinner.style.display = 'block';
+
+        fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error('Erreur réseau');
+                return res.json();
+            })
+            .then(data => {
+                if (searchSpinner) searchSpinner.style.display = 'none';
+                const results = data.results || [];
+
+                if (exactOnly) {
+                    if (results.length > 0) {
+                        showPatientCard(results[0]);
+                    } else {
+                        hidePatientCard();
+                        if (notFoundMsg && query.length >= 4) notFoundMsg.style.display = 'flex';
+                    }
+                } else {
+                    renderSuggestions(results, query);
+                    // Si un résultat correspond exactement au numéro tapé (insensible à la casse)
+                    const exact = results.find(p => p.patient_number.toLowerCase() === query.toLowerCase());
+                    if (exact) {
+                        showPatientCard(exact);
+                    }
+                }
+            })
+            .catch(err => {
+                if (searchSpinner) searchSpinner.style.display = 'none';
+                console.error('Erreur recherche patient:', err);
+            });
+    }
+
+    if (inputPatientNumber) {
+        inputPatientNumber.setAttribute('autocomplete', 'off');
+        inputPatientNumber.setAttribute('placeholder', 'Ex: PAT-2026-0001 ou nom, prénom, téléphone...');
+
+        inputPatientNumber.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const val = this.value.trim();
+
+            if (notFoundMsg) notFoundMsg.style.display = 'none';
+
+            if (val.length < 2) {
+                hideDropdown();
+                hidePatientCard();
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetchPatientSuggestions(val, false);
+            }, 250);
+        });
+
+        // Navigation clavier (Flèches Haut/Bas, Entrée, Echap)
+        inputPatientNumber.addEventListener('keydown', function(e) {
+            if (!dropdown || dropdown.style.display === 'none' || currentResults.length === 0) return;
+
+            const items = dropdown.querySelectorAll('.patient-suggest-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+                highlightSuggestion(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+                highlightSuggestion(items);
+            } else if (e.key === 'Enter') {
+                if (activeSuggestionIndex >= 0 && activeSuggestionIndex < currentResults.length) {
+                    e.preventDefault();
+                    selectPatient(currentResults[activeSuggestionIndex]);
+                }
+            } else if (e.key === 'Escape') {
+                hideDropdown();
+            }
+        });
+
+        function highlightSuggestion(items) {
+            items.forEach((item, idx) => {
+                if (idx === activeSuggestionIndex) {
+                    item.classList.add('active');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // Fermeture automatique du dropdown au clic en dehors
+        document.addEventListener('click', function(e) {
+            if (!inputPatientNumber.contains(e.target) && !dropdown.contains(e.target)) {
+                hideDropdown();
+            }
+        });
+
+        // Bouton Changer / Réinitialiser
+        if (btnClearPatient) {
+            btnClearPatient.addEventListener('click', function() {
+                inputPatientNumber.value = '';
+                hidePatientCard();
+                hideDropdown();
+                if (notFoundMsg) notFoundMsg.style.display = 'none';
+                inputPatientNumber.focus();
+            });
+        }
+
+        // Si le champ a déjà une valeur (ex: rechargement de page ou erreur de formulaire)
+        if (inputPatientNumber.value.trim().length >= 3) {
+            fetchPatientSuggestions(inputPatientNumber.value.trim(), true);
+        }
+    }
 
     // Initialisation au chargement
     updateCalculations();
