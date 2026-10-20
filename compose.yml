@@ -19,7 +19,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-django-insecure-+l$3g+qpuzfy+dd!b-+)z5=0$c-!+in27p1*w^$+-^@dr2v@ol}
       - DEBUG=${DEBUG:-False}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
-      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000}
       - AUTO_SEED=${AUTO_SEED:-1}
     depends_on:
       db:
@@ -34,6 +34,17 @@ services:
       timeout: 5s
       retries: 3
       start_period: 25s
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: clinic_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - web
 
   db:
     image: postgres:16-alpine
