@@ -33,6 +33,7 @@ if [ "$AUTO_SEED" = "1" ] || [ "$AUTO_SEED" = "true" ]; then
     echo "Initialisation des données de démonstration..."
     python manage.py seed_users || true
     python manage.py seed_billing || true
+    python manage.py seed_appointments || true
 fi
 
 echo "Démarrage du serveur d'application..."

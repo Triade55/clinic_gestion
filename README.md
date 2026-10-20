@@ -84,6 +84,23 @@ L'application est accessible sur : `http://127.0.0.1:8000/`.
 
 ---
 
+### 3. Prise de Rendez-vous & API REST (`appointments`)
+- **API REST & CORS** : Intégration de Django REST Framework, SimpleJWT (`Bearer`) et `django-cors-headers`.
+- **Espace Public Patient (sans authentification)** :
+  - Consultation des spécialités et tarifs (`/api/public/specialties/`).
+  - Détection dynamique des créneaux horaires disponibles par médecin et spécialité (`/api/public/slots/`).
+  - Prise de rendez-vous en ligne avec émission d'un reçu et code de réservation (`RES-YYYYMM-XXXX`).
+  - Consultation, report et annulation (réservée exclusivement au patient via `RES-` / `PAT-` + téléphone).
+- **Cycle de Vie & Traçabilité Clinique** :
+  - `EN_ATTENTE` : Réservation en ligne.
+  - `CONFIRME` : Validation par la secrétaire.
+  - `EN_SALLE_D_ATTENTE` : Enregistrement au guichet (attribution de l'IPP officiel `PAT-YYYY-XXXX` si nouveau patient + création de la facture `Invoice`).
+  - `EN_CONSULTATION` : Prise en charge par le médecin.
+  - `TERMINE` : Clôture de la consultation par le praticien.
+  - `ANNULE` / `ABSENT` : Annulation par le patient ou créneau dépassé.
+
+---
+
 ## 🔑 Comptes de Démonstration
 
 | Rôle | Adresse Email | Mot de passe |
@@ -97,7 +114,8 @@ L'application est accessible sur : `http://127.0.0.1:8000/`.
 
 ## 🧪 Tests Automatisés
 
-Pour lancer l'ensemble de la suite de tests (17 tests) :
+Pour lancer l'ensemble de la suite de tests (30 tests) :
 ```bash
-python manage.py test accounts billing
+docker compose exec web python manage.py test
 ```
+
